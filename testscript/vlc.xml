@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<apptest  app_path="C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe">
+<app_splashscreen>1</app_splashscreen>
+<app_name>VLC media player</app_name>
+<action title="open file">
+   <type>key</type>
+   <name>VLC media player</name>
+   <keys>CTRL+O</keys>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="input video">
+   <type>edit</type>
+   <name>Edit</name>
+   <string>test.h265</string>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="enter">
+   <type>key</type>
+   <name>Edit</name>
+   <keys>RETURN</keys>
+   <count>1</count>
+   <delay>10</delay>
+</action>
+<action title="close">
+   <type>key</type>
+   <name>test.h265 - VLC media player</name>
+   <keys>ALT+F4</keys>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+</apptest>

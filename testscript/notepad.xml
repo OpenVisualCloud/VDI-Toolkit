@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<apptest  app_path="c:\\windows\system32\\notepad.exe">
+<app_url>http://127.0.0.1:4723</app_url>
+<action title="set main windows focus">
+   <type>click</type>
+   <name>Untitled - Notepad</name>
+   <delay>1</delay>
+</action>
+<action title="edit menu">
+   <type>key</type>
+   <name>Untitled - Notepad</name>
+   <keys>ALT+E</keys>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="time and date">
+   <type>key</type>
+   <name>Untitled - Notepad</name>
+   <keys>D</keys>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="return">
+   <type>key</type>
+   <name>Edit</name>
+   <keys>RETURN</keys>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="help menu">
+   <type>click</type>
+   <name>Help</name>
+   <delay>3</delay>
+</action>
+<action title="help menu">
+   <type>click</type>
+   <name>Help</name>
+   <delay>3</delay>
+</action>
+<action title="About menu">
+   <type>click</type>
+   <name>About Notepad</name>
+   <delay>3</delay>
+</action>
+<action title="exit About menu">
+   <type>click</type>
+   <name>OK</name>
+   <delay>3</delay>
+</action>
+<action title="edit text">
+   <type>edit</type>
+   <name>Edit</name>
+   <string>This is just test text!!!!</string>
+   <delay>3</delay>
+</action>
+<action title="return text">
+   <type>key</type>
+   <name>Edit</name>
+   <keys>RETURN</keys>
+   <count>2</count>
+   <delay>3</delay>
+</action>
+<action title="edit text">
+   <type>edit</type>
+   <name>Edit</name>
+   <random>500</random>
+   <delay>3</delay>
+</action>
+<action title="delete text">
+   <type>key</type>
+   <name>Edit</name>
+   <keys>BACKSPACE</keys>
+   <count>100</count>
+   <delay>3</delay>
+</action>
+<action title="Close app">
+   <type>click</type>
+   <name>Close</name>
+   <delay>2</delay>
+</action>
+<action title="Dont save">
+   <type>click</type>
+   <name>Don't Save</name>
+   <delay>2</delay>
+</action>
+</apptest>

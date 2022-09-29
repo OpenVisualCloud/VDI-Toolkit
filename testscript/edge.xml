@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<apptest  app_path="C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe">
+<action title="input url">
+   <type>edit</type>
+   <name>OmniboxViewViews</name>
+   <string>http://www.baidu.com</string>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="enter">
+   <type>key</type>
+   <name>OmniboxViewViews</name>
+   <keys>RETURN</keys>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="new tab">
+   <type>click</type>
+   <name>New Tab</name>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+
+<action title="input url">
+   <type>edit</type>
+   <name>OmniboxViewViews</name>
+   <string>http://www.163.com</string>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="enter">
+   <type>key</type>
+   <name>OmniboxViewViews</name>
+   <keys>RETURN</keys>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="new tab">
+   <type>click</type>
+   <name>New Tab</name>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+
+<action title="input url">
+   <type>edit</type>
+   <name>OmniboxViewViews</name>
+   <string>http://www.sohu.com</string>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="enter">
+   <type>key</type>
+   <name>OmniboxViewViews</name>
+   <keys>RETURN</keys>
+   <count>1</count>
+   <delay>10</delay>
+</action>
+
+
+<action title="close">
+   <type>key</type>
+   <name>OmniboxViewViews</name>
+   <keys>ALT+F4</keys>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+
+</apptest>

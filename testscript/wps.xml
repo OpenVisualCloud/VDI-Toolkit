@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<apptest app_path="C:\\Users\\Administrator\\AppData\\Local\\kingsoft\\WPS Office\\10.1.0.7698\\office6\\wps.exe">
+<app_splashscreen>1</app_splashscreen>
+<app_name>WPS</app_name>
+<app_url>http://127.0.0.1:4723</app_url>
+<app_class>OpusApp</app_class>
+<action title="wait for app load">
+   <type>delay</type>
+   <delay>5</delay>
+</action>
+<action title="new file">
+   <type>key</type>
+   <name>我的WPS - WPS 文字</name>
+   <keys>CTRL+N</keys>
+   <count>1</count>
+   <delay>4</delay>
+</action>
+<action title="edit text">
+   <type>edit</type>
+   <name>_WwG</name>
+   <string>This is just test text!!!! 这个是测试文字</string>
+   <delay>4</delay>
+</action>
+<action title="return text">
+   <type>key</type>
+   <name>_WwG</name>
+   <keys>RETURN</keys>
+   <count>2</count>
+   <delay>4</delay>
+</action>
+<action title="edit text">
+   <type>edit</type>
+   <name>_WwG</name>
+   <random>500</random>
+   <delay>4</delay>
+</action>
+<action title="delete text">
+   <type>key</type>
+   <name>_WwG</name>
+   <keys>BACKSPACE</keys>
+   <count>100</count>
+   <delay>4</delay>
+</action>
+<action title="close app">
+   <type>key</type>
+   <name>_WwG</name>
+   <keys>ALT+F4</keys>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="close app">
+   <type>key</type>
+   <name>WPS 文字</name>
+   <keys>TAB</keys>
+   <count>1</count>
+   <delay>2</delay>
+</action>
+<action title="close app">
+   <type>key</type>
+   <name>WPS 文字</name>
+   <keys>RETURN</keys>
+   <count>1</count>
+   <delay>4</delay>
+</action>
+</apptest>
