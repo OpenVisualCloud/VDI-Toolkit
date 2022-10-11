@@ -4,6 +4,7 @@
 import os
 import random
 import time
+import sys
 import string
 import win32api  # pip install pywin32
 import win32gui
@@ -250,6 +251,10 @@ def findAllFile(base):
                yield fullname
 
 def main():
+    global app_url 
+    if len(sys.argv) > 1:
+        app_url="http://"+sys.argv[1]+":4723"
+        print app_url
     while 1:
         for xmlfile in findAllFile('.'):
             do_test(xmlfile)

@@ -2,7 +2,6 @@
 <apptest app_path="C:\\Users\\Administrator\\AppData\\Local\\kingsoft\\WPS Office\\10.1.0.7698\\office6\\wps.exe">
 <app_splashscreen>1</app_splashscreen>
 <app_name>WPS</app_name>
-<app_url>http://127.0.0.1:4723</app_url>
 <app_class>OpusApp</app_class>
 <action title="wait for app load">
    <type>delay</type>

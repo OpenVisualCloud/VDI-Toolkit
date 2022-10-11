@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <apptest  app_path="c:\\windows\system32\\notepad.exe">
-<app_url>http://127.0.0.1:4723</app_url>
 <action title="set main windows focus">
    <type>click</type>
    <name>Untitled - Notepad</name>
