@@ -15,8 +15,8 @@ then
     max_seg=0
 else
     segment=`ifconfig br0 | grep inet | grep -v inet6|awk '{print $2}'|tr -d "addr:"|awk -F. '{print $1 "." $2 "." $3}'`
-    min_seg=-1
-    max_seg=1
+    min_seg=-2
+    max_seg=2
 fi
 echo $segment
 i=0
@@ -81,4 +81,11 @@ done
 
  handle_ip_mac $arplist
 
+ #cat $temp_out_file | while read line
+ #do
+ #       array=($line)
+ #       ip=${array[0]}
+ #       mac=${array[1]}
+ #       handle_ip_mac $ip $mac;
+ #done 
 

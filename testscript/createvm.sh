@@ -1,21 +1,27 @@
 #!/bin/sh
 
-if [ $# -lt 3 ]
+if [ $# -lt 4 ]
 then
-    echo "Usage: createvm.sh original_qcow2_name dest_dir vm_count nat|bridge"
+    echo "Usage: createvm.sh original_qcow2_name dest_dir start_vm vm_count nat|bridge"
     exit
 fi
 network_mode='nat'
-if [ $# -eq 4 ] 
+if [ $# -eq 5 ] 
 then 
-    network_mode=$4
+    network_mode=$5
 fi
-vm_count=$3
+let start_vm=$3
+let vm_count=$4
 dest_dir=$2
 org_image=$1
-if (( $vm_count < 1 )) || (( $vm_count > 200 ))
+if (( $start_vm < 0 )) || (( $start_vm > 254 ))
 then
-    echo "vmcount should between 1~200"
+    echo "start_vm should between 0~254"
+    exit
+fi
+if (( $vm_count < 1 )) || (( $vm_count > 254 ))
+then
+    echo "vmcount should between 1~254"
     exit
 fi
 if [ ! -f $org_image ]   
@@ -40,15 +46,53 @@ else
    network_mode='nat'
    echo "use default nat mode"
 fi
+image_type='increment'
 #copy image
-for ((i=0; i<$vm_count; i++)); do
-    echo "Copy to /nvme/testvm${i}.qcow2..."
-    if [ ! -f /nvme/testvm${i}.qcow2 ]
+if [ $image_type == 'increment' ]
+then
+    echo "Copy $org_image  to $dest_dir/base.qcow2 ..."
+    if [ ! -f $dest_dir/base.qcow2 ] 
     then
-        cp $org_image  /nvme/testvm${i}.qcow2
+        cp $org_image  $dest_dir/base.qcow2
+    else
+        rm -f $dest_dir/base.qcow2
+        cp $org_image  $dest_dir/base.qcow2
     fi
     echo "Done"
-done
+   
+    for ((i=$start_vm; i<(($start_vm+$vm_count)); i++)); do
+    echo "Create increment file $dest_dir/testvm${i}.qcow2..."
+    if [ ! -f $dest_dir/testvm${i}.qcow2 ]
+    then
+        qemu-img create -b $dest_dir/base.qcow2 -f qcow2 $dest_dir/testvm${i}.qcow2
+    else
+        echo "Increment file $dest_dir/testvm${i}.qcow2 exist"
+    fi
+    echo "Done"
+    done
+else
+    max_diff=`expr 1*1024*1024`            # original image and dest image max difference size is 1G bytes
+    for ((i=$start_vm; i<(($start_vm+$vm_count)); i++)); do
+        echo "Copy to $dest_dir/testvm${i}.qcow2..."
+        if [ ! -f $dest_dir/testvm${i}.qcow2 ]
+        then
+            cp $org_image  $dest_dir/testvm${i}.qcow2
+        else
+            dest_size=`ls -s $dest_dir/testvm${i}.qcow2|awk '{print $1}'`
+            org_size=`ls -s $org_image|awk '{print $1}'`
+            diff_size=`expr $dest_size - $org_size`
+            diff_size=${diff_size#-}
+            echo $dest_size $org_size $diff_size
+            if (($diff_size >  $max_diff)) 
+            then
+                echo "Dest file size not same as org, rm dest file..."
+                rm -f $dest_dir/testvm${i}.qcow2
+                cp $org_image  $dest_dir/testvm${i}.qcow
+            fi
+        fi
+        echo "Done"
+    done
+fi
 
 if [ $network_mode == 'nat' ] 
 then
@@ -74,7 +118,7 @@ else
     bridge_type=br0
 fi
 #create tap
-for ((i=0; i<$vm_count; i++)); do
+for ((i=$start_vm; i<(($start_vm+$vm_count)); i++)); do
   tunctl -t tap$i
   brctl addif $bridge_type tap$i
   ifconfig tap$i up
@@ -83,17 +127,28 @@ dec2hex(){
     printf "%02x" $1
 }
 # launch vm
-mac1=57
-mac2=0
-rm -f mac.txt
-for ((i=0; i<$vm_count; i++)); do
-    if (($i > 254 ))
+mac2=$start_vm
+mac1=55
+
+#rm -f mac.txt
+prev_i=0
+local_ip=`ifconfig br0 | grep inet | grep -v inet6|awk '{print $2}'|tr -d "addr:"|awk -F. '{print $1 "." $2 "." $3 "." $4}'`
+echo $local_ip
+for ((i=$start_vm; i<(($start_vm+$vm_count)); i++)); do
+    if (($i >= 254 && $prev_i < 254))
     then
         ((mac1++))
     fi 
+    let prev_i=$i
     mac2=$(($i % 254))
     ((mac2++))
     mac2=$(dec2hex $mac2)
-    qemu-kvm -drive file=/nvme/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m 4096 -smp 2 -M q35 -cpu host -enable-kvm -netdev tap,id=mynet$i,ifname=tap$i,script=no,downscript=no -device e1000,netdev=mynet$i,mac=52:55:00:d1:$mac1:$mac2 &
+    if (($i <= 99 ))
+    then
+        vnc_setting="-vnc 0.0.0.0:"$i
+    else
+        vnc_setting=""
+    fi
+    qemu-kvm -drive file=/nvme/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m 4096 -smp 2 -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on,netdev=mynet$i,mac=52:55:00:d1:$mac1:$mac2 $vnc_setting -machine usb=on -device usb-tablet &
     echo 52:55:00:d1:$mac1:$mac2 >>mac.txt
 done
