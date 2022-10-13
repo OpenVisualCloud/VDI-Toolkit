@@ -10,22 +10,23 @@ temp_out_file=$0.out
 
 if [ $network_mode == 'nat' ] 
 then
-    segment='192.168.1'
+    segment='172.16.10'
     min_seg=0
-    max_seg=0
+    max_seg=1
 else
     segment=`ifconfig br0 | grep inet | grep -v inet6|awk '{print $2}'|tr -d "addr:"|awk -F. '{print $1 "." $2 "." $3}'`
-    min_seg=-2
-    max_seg=2
+    min_seg=-1
+    max_seg=1
 fi
 echo $segment
 i=0
+awk ' !x[$0]++' mac.txt > rmv_dup_mac.txt   #remove duplicate mac address from mac.txt
 while read line
 do
     array=($line)
     maclist[$i]=${array[0]}
     let i++
-done<mac.txt
+done<rmv_dup_mac.txt
 length=${#maclist[@]}
 echo $length
 for((range=$min_seg;range<=$max_seg;range++));
@@ -66,6 +67,8 @@ done
         
     
 }
+ rm -f $temp_file_name
+ rm -f $temp_out_file
  arp -a > $temp_file_name
  cat $temp_file_name | awk '{split($0,ip,"[()]");printf ip[2] " ";a=index($0," at ");b=index($0," on ");print substr($0,a+4,b-a-4)}' > "$temp_out_file"
  echo "IP-MAC map to $temp_out_file"
@@ -80,12 +83,4 @@ done
  done<$temp_out_file
 
  handle_ip_mac $arplist
-
- #cat $temp_out_file | while read line
- #do
- #       array=($line)
- #       ip=${array[0]}
- #       mac=${array[1]}
- #       handle_ip_mac $ip $mac;
- #done 
 

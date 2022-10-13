@@ -19,9 +19,9 @@ then
     echo "start_vm should between 0~254"
     exit
 fi
-if (( $vm_count < 1 )) || (( $vm_count > 254 ))
+if (( $vm_count < 1 )) || (( $vm_count > 500 ))
 then
-    echo "vmcount should between 1~254"
+    echo "vmcount should between 1~500"
     exit
 fi
 if [ ! -f $org_image ]   
@@ -97,20 +97,23 @@ fi
 if [ $network_mode == 'nat' ] 
 then
     brctl addbr br1
-    ifconfig br1 192.168.1.1 netmask 255.255.255.0 broadcast 192.168.1.255
+    ifconfig br1 172.16.10.1 netmask 255.255.254.0 broadcast 172.16.11.255
     ifconfig br1 up
-    iptables -t nat -A POSTROUTING -s 192.168.1.0/24 ! -d 192.168.1.0/24 -j MASQUERADE
+    iptables -t nat -A POSTROUTING -s 172.16.10.0/23 ! -d 172.16.10.0/23 -j MASQUERADE
     sysctl -w net.ipv4.ip_forward=1
-    iptables -A FORWARD -s 192.168.1.0/24 -j ACCEPT
-    if [ ! -f dnsmasq_vdi.conf ] 
+    iptables -A FORWARD -s 172.16.10.0/23 -j ACCEPT
+    if [  -f dnsmasq_vdi.conf ] 
     then
-        echo "listen-address=192.168.1.1" >>dnsmasq_vdi.conf
-        echo "except-interface=l0" >>dnsmasq_vdi.conf
-        echo "interface=br1" >>dnsmasq_vdi.conf
-        echo "bind-interfaces" >>dnsmasq_vdi.conf
-        echo "dhcp-range=192.168.1.2,192.168.1.254" >>dnsmasq_vdi.conf
-        echo "dhcp-no-override" >>dnsmasq_vdi.conf
+        rm -f dnsmasq_vdi.conf
     fi
+    echo "listen-address=172.16.10.1" >>dnsmasq_vdi.conf
+    echo "except-interface=l0" >>dnsmasq_vdi.conf
+    echo "interface=br1" >>dnsmasq_vdi.conf
+    echo "bind-interfaces" >>dnsmasq_vdi.conf
+    echo "dhcp-range=172.16.10.2,172.16.11.254,255.255.254.0" >>dnsmasq_vdi.conf
+    echo "dhcp-no-override" >>dnsmasq_vdi.conf
+    killall dnsmasq
+    sleep 1
     /usr/sbin/dnsmasq --conf-file=dnsmasq_vdi.conf
     sleep 1
     bridge_type=br1
@@ -149,6 +152,6 @@ for ((i=$start_vm; i<(($start_vm+$vm_count)); i++)); do
     else
         vnc_setting=""
     fi
-    qemu-kvm -drive file=/nvme/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m 4096 -smp 2 -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on,netdev=mynet$i,mac=52:55:00:d1:$mac1:$mac2 $vnc_setting -machine usb=on -device usb-tablet &
+    qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m 4096 -smp 2 -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on,netdev=mynet$i,mac=52:55:00:d1:$mac1:$mac2 $vnc_setting -machine usb=on -device usb-tablet &
     echo 52:55:00:d1:$mac1:$mac2 >>mac.txt
 done
