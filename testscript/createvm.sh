@@ -50,13 +50,13 @@ image_type='increment'
 #copy image
 if [ $image_type == 'increment' ]
 then
-    echo "Copy $org_image  to $dest_dir/base.qcow2 ..."
-    if [ ! -f $dest_dir/base.qcow2 ] 
+    echo "Copy $org_image  to $dest_dir/base$start_vm-$vm_count.qcow2 ..."
+    if [ ! -f $dest_dir/base$start_vm-$vm_count.qcow2 ] 
     then
-        cp $org_image  $dest_dir/base.qcow2
+        cp $org_image  $dest_dir/base$start_vm-$vm_count.qcow2
     else
-        rm -f $dest_dir/base.qcow2
-        cp $org_image  $dest_dir/base.qcow2
+        rm -f $dest_dir/base$start_vm-$vm_count.qcow2
+        cp $org_image  $dest_dir/base$start_vm-$vm_count.qcow2
     fi
     echo "Done"
    
@@ -64,7 +64,7 @@ then
     echo "Create increment file $dest_dir/testvm${i}.qcow2..."
     if [ ! -f $dest_dir/testvm${i}.qcow2 ]
     then
-        qemu-img create -b $dest_dir/base.qcow2 -f qcow2 $dest_dir/testvm${i}.qcow2
+        qemu-img create -b $dest_dir/base$start_vm-$vm_count.qcow2 -f qcow2 $dest_dir/testvm${i}.qcow2
     else
         echo "Increment file $dest_dir/testvm${i}.qcow2 exist"
     fi
@@ -146,12 +146,7 @@ for ((i=$start_vm; i<(($start_vm+$vm_count)); i++)); do
     mac2=$(($i % 254))
     ((mac2++))
     mac2=$(dec2hex $mac2)
-    if (($i <= 99 ))
-    then
-        vnc_setting="-vnc 0.0.0.0:"$i
-    else
-        vnc_setting=""
-    fi
-    qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m 4096 -smp 2 -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on,netdev=mynet$i,mac=52:55:00:d1:$mac1:$mac2 $vnc_setting -machine usb=on -device usb-tablet &
+    vnc_setting="-vnc 0.0.0.0:"$i
+    qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m 4096 -smp 2 -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on,netdev=mynet$i,mac=52:55:00:d1:$mac1:$mac2 -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
     echo 52:55:00:d1:$mac1:$mac2 >>mac.txt
 done
