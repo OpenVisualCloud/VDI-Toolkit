@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 
 import os
+import sys
 import subprocess
 import time
 iplist=[]      
@@ -15,12 +16,19 @@ def find_vm_ip():
 def main():
     global iplist
     find_vm_ip()
+    systype=sys.platform
     print iplist
     for vm_ip in iplist:
         print vm_ip
-        subprocess.Popen(["python", "winapptest.py",vm_ip],shell=True)
+        if systype == "linux2":
+            subprocess.Popen(["python2.7", "winapptest.py",vm_ip])
+        else:
+            subprocess.Popen(["python", "winapptest.py",vm_ip],shell=True) 
         time.sleep(0.05)
-    os.system('pause')
+    if systype == "linux2":
+        testinput=input()
+    else:
+        os.system('pause')
 
 if __name__ == '__main__':
     main()

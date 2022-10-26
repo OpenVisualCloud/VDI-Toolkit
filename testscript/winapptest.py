@@ -6,8 +6,9 @@ import random
 import time
 import sys
 import string
-import win32api  # pip install pywin32
-import win32gui
+if sys.platform == "win32":
+    import win32api  # pip install pywin32
+    import win32gui
 import xml.dom.minidom as minidom
 from xml.dom.minidom import parse
 from appium import webdriver
@@ -61,10 +62,11 @@ def get_send_key(key_value):
 match_handle = None
 def check_name(hwnd,name):
     global match_handle
-    title = win32gui.GetWindowText(hwnd)
-    print "title %s" % title
-    if title.find(name) > -1:
-        match_handle = hwnd
+    if sys.platform == "win32":
+        title = win32gui.GetWindowText(hwnd)
+        print "title %s" % title
+        if title.find(name) > -1:
+            match_handle = hwnd
 
 def find_element_by_name_exist(driver, name):
     global match_handle
@@ -78,7 +80,8 @@ def find_element_by_name_exist(driver, name):
             print("App name not match")
             print(driver.title)
             if app_url == "http://127.0.0.1:4723":         #local test, use win32gui
-                win32gui.EnumWindows(check_name,name)
+                if sys.platform == "win32":
+                    win32gui.EnumWindows(check_name,name)
             else:                                          # remote, can not use win32gui
                 print"Remote find window name to match %s" % name
                 elements = driver.find_elements_by_xpath("//*")
