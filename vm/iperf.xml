@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<apptest  app_path="c:\\windows\\system32\\cmd.exe">
+
+<action title="edit text">
+   <type>edit</type>
+   <name>ConsoleWindowClass</name>
+   <string>cd c:\test\iperf-2.0.9-win64</string>
+   <delay>1</delay>
+</action>
+
+<action title="Return">
+   <type>key</type>
+   <name>ConsoleWindowClass</name>
+   <keys>RETURN</keys>
+   <count>1</count>
+   <delay>1</delay>
+</action>
+
+<action title="edit text">
+   <type>edit</type>
+   <name>ConsoleWindowClass</name>
+   <string>iperf.exe -c 172.16.11.254 -t 120</string>
+   <delay>1</delay>
+</action>
+
+<action title="return text">
+   <type>key</type>
+   <name>ConsoleWindowClass</name>
+   <keys>RETURN</keys>
+   <count>2</count>
+   <delay>124</delay>
+</action>
+
+<action title="edit text">
+   <type>edit</type>
+   <name>ConsoleWindowClass</name>
+   <string>exit</string>
+   <delay>1</delay>
+</action>
+
+<action title="Return">
+   <type>key</type>
+   <name>ConsoleWindowClass</name>
+   <keys>RETURN</keys>
+   <count>1</count>
+   <delay>1</delay>
+</action>
+
+</apptest>
