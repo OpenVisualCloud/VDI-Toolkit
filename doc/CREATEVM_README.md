@@ -24,3 +24,13 @@ the script will generate a vm_ip.txt file contains all the VMs' ip address
 ./findip.sh nat
 ```
 Note: to make sure the clean test result, make sure to delete all the files in dest directory, also remove mac.txt  
+
+# Use createvm-dpdk.sh to launch the vhost-user dpdk network environment VMs
+## First install dpdk-stable-21.11.2 
+## Next install OVS 2.17, compile OVS with parameter "--with-dpdk"
+## Ensure added "iommu=pt intel_iommu=on" in the kernel command line
+## Usage: createvm-dpdk.sh original_qcow2_name dest_dir start_vm vm_count dpdk-nic-interface nat|bridge
+For example:
+```
+./createvm-dpdk.sh /nvme/win2k16_resize.qcow2 /nvme 0 100 ens5f0 nat 
+```
