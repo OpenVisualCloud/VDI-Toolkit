@@ -53,12 +53,18 @@ def main():
     systype=sys.platform
     print(systype)
     print(iplist)
-    
-    if connect_type == "RDP":
-        connect_py = "/usr/bin/rdpy-rdpclient.py"
+    if systype == "linux" or systype == "linux2":
+        if connect_type == "RDP":
+            connect_py = "/usr/bin/rdpy-rdpclient.py"
+        else:
+            connect_py = "/usr/bin/rdpy-vncclient.py"
+            username=""
     else:
-        connect_py = "/usr/bin/rdpy-vncclient.py"
-        username=""
+        if connect_type == "RDP":
+            connect_py = "c:/python27/scripts/rdpy-rdpclient.py"
+        else:
+            connect_py = "c:/python27/scripts/rdpy-vncclient.py"
+            username=""
     if username =="" and password =="":
         connect_py =""
     for vm_ip in iplist:
@@ -74,7 +80,10 @@ def main():
             if systype == "linux" or systype == "linux2":
                 p=subprocess.Popen(["python2.7", connect_py,username,password,vm_ip])
             else:
-                p=subprocess.Popen(["python", connect_py,username,password,vm_ip],shell=True)
+                if len(username) != 0:
+                    p=subprocess.Popen(["python", connect_py,username,password,vm_ip],shell=True)
+                else:
+                    p=subprocess.Popen(["python", connect_py,password,vm_ip],shell=True)
             rdp_processlist.append(p);
             time.sleep(0.05)
 
@@ -108,7 +117,7 @@ def main():
                     if systype == "linux" or systype == "linux2":
                         p=subprocess.Popen(["python2.7",connect_py,username,password,vm_ip])
                     else:
-                        p=subprocess.Popen(["python", connect_py,username,passowrd,vm_ip],shell=True)
+                        p=subprocess.Popen(["python", connect_py,username,password,vm_ip],shell=True)
                     rdp_processlist.insert(i,p);
                 time.sleep(2)
             i=i+1

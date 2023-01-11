@@ -13,11 +13,27 @@ git clone https://github.com/citronneur/rdpy.git rdpy
 ```
 git am 0001-Added-auto-mouse-move-to-avoid-stop-connection.patch
 ```
-### Install the rdpy:
+
+### Windows need download python-2.7.18.amd64.msi, and install python2.7
 ```
-python rdpy/setup.py install
+pip install Twisted==20.3.0
+pip install pyOpenSSL==20.0.0
+pip install qt4reactor==1.6
+pip install service-identity==21.1.0
+pip install rsa==4.5
+pip install pyasn1==0.4.8
+pip install attrs==20.3.0
+pip install wheel==0.37.1
 ```
-### Download get_pip.py from https://bootstrap.pypa.io/pip/2.7/get-pip.py, then
+### Then Windows download below PyQt version
+x86 | x86_64
+----|-------
+[PyQt4](http://sourceforge.net/projects/pyqt/files/PyQt4/PyQt-4.11.3/PyQt4-4.11.3-gpl-Py2.7-Qt4.8.6-x32.exe) | [PyQt4](http://sourceforge.net/projects/pyqt/files/PyQt4/PyQt-4.11.3/PyQt4-4.11.3-gpl-Py2.7-Qt4.8.6-x64.exe/download)
+[PyWin32](http://sourceforge.net/projects/pywin32/files/pywin32/Build%20218/pywin32-218.win32-py2.7.exe/download) | [PyWin32](http://sourceforge.net/projects/pywin32/files/pywin32/Build%20218/pywin32-218.win-amd64-py2.7.exe/download)
+
+### Finally Windows download VCForPython27.msi and install
+
+### Linux download get_pip.py from https://bootstrap.pypa.io/pip/2.7/get-pip.py, then
 ```
 python2.7 get-pip.py
 ```
@@ -32,6 +48,10 @@ pip install pyasn1==0.4.8
 pip install attrs==20.3.0
 pip install wheel==0.37.1
 yum install python-qt4
+```
+### Install the rdpy:
+```
+python rdpy/setup.py install
 ```
 
 ### Copy the generated vm_ip.txt to the same directory as vmtestrun.py, and also the winapptest.py, put the test app xml in the same directory, 
