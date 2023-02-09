@@ -1,0 +1,27 @@
+From 61bd24af2bf989d93fb1d018b6275813f7463705 Mon Sep 17 00:00:00 2001
+From: root <root@qiaoliu-icelake-vdi.sh.intel.com>
+Date: Thu, 9 Feb 2023 00:08:17 -0500
+Subject: [PATCH 2/2] Fix RDP memory leak issue
+
+---
+ ext/rle.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/ext/rle.c b/ext/rle.c
+index 2d7da8d..c5fccd0 100644
+--- a/ext/rle.c
++++ b/ext/rle.c
+@@ -929,7 +929,9 @@ bitmap_decompress_wrapper(PyObject* self, PyObject* args)
+ 
+ 	if(bitmap_decompress((uint8*)output.buf, width, height, (uint8*)input.buf, input.len, bpp) == False)
+ 		return NULL;
+-
++        
++        PyBuffer_Release(&output);
++        PyBuffer_Release(&input);
+ 	Py_RETURN_NONE;
+ }
+  
+-- 
+1.8.3.1
+

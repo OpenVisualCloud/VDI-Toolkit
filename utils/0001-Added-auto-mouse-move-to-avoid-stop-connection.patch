@@ -1,14 +1,14 @@
-From fa18d91134739048ace5cbcbf5b6d24930937926 Mon Sep 17 00:00:00 2001
+From 8e31ef92bdfe3fb37290585e1c56438dd03671bb Mon Sep 17 00:00:00 2001
 From: root <root@qiaoliu-icelake-vdi.sh.intel.com>
 Date: Tue, 6 Dec 2022 03:15:11 -0500
-Subject: [PATCH] Added auto mouse move to avoid stop connection
+Subject: [PATCH 1/2] Added auto mouse move to avoid stop connection
 
 ---
  rdpy/ui/qt4.py | 30 ++++++++++++++++++++++++++++--
  1 file changed, 28 insertions(+), 2 deletions(-)
 
 diff --git a/rdpy/ui/qt4.py b/rdpy/ui/qt4.py
-index 237f974..dee59c4 100644
+index 237f974..0229652 100644
 --- a/rdpy/ui/qt4.py
 +++ b/rdpy/ui/qt4.py
 @@ -22,7 +22,9 @@ Qt specific code
@@ -28,7 +28,7 @@ index 237f974..dee59c4 100644
          self._widget = QRemoteDesktop(1024, 800, self)
 +        self.timer = QTimer()
 +        self.timer.timeout.connect(self.MouseMove)
-+        self.timer.start(30000)
++        self.timer.start(60000)
          
      def getWidget(self):
          """
@@ -54,7 +54,7 @@ index 237f974..dee59c4 100644
          controller.setScreen(width, height)
 +        self.timer = QTimer()
 +        self.timer.timeout.connect(self.MouseMove)
-+        self.timer.start(30000)
++        self.timer.start(60000)
 +
          
      def getWidget(self):
