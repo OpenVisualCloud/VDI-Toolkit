@@ -1,7 +1,7 @@
 From 61bd24af2bf989d93fb1d018b6275813f7463705 Mon Sep 17 00:00:00 2001
 From: root <root@qiaoliu-icelake-vdi.sh.intel.com>
 Date: Thu, 9 Feb 2023 00:08:17 -0500
-Subject: [PATCH 2/2] Fix RDP memory leak issue
+Subject: [PATCH] Fix RDP memory leak issue
 
 ---
  ext/rle.c | 4 +++-
