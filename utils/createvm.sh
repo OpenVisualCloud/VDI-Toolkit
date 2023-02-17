@@ -1,17 +1,19 @@
 #!/bin/sh
 
-if [ $# -lt 4 ]
+if [ $# -lt 6 ]
 then
-    echo "Usage: createvm.sh original_qcow2_name dest_dir start_vm vm_count nat|bridge"
+    echo "Usage: createvm.sh original_qcow2_name dest_dir start_vm vm_count cpu_count memory_size nat|bridge"
     exit
 fi
 network_mode='nat'
-if [ $# -eq 5 ] 
+if [ $# -eq 7 ] 
 then 
-    network_mode=$5
+    network_mode=$7
 fi
 let start_vm=$3
 let vm_count=$4
+let cpu_count=$5
+let memory_size=$6
 dest_dir=$2
 org_image=$1
 if (( $start_vm < 0 )) || (( $start_vm > 254 ))
@@ -34,6 +36,18 @@ if [ ! -d $dest_dir ]
 then
    echo "Dir $dest_dir not found!" >&2
    exit
+fi
+
+if (( $cpu_count < 1 )) || (( $cpu_count > 32 ))
+then
+    echo "cpu count should between 1~32"
+    exit
+fi
+
+if (( $memory_size < 2048 )) || (( $memory_size > 32768 ))
+then
+    echo "memory size  should between 2048~32768"
+    exit
 fi
 
 if [ $network_mode == 'nat' ] 
@@ -141,7 +155,7 @@ for ((i=$start_vm; i<(($start_vm+$vm_count)); i++)); do
     ((mac2++))
     mac2=$(dec2hex $mac2)
     vnc_setting="-vnc 0.0.0.0:"$i
-    qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m 4096 -smp 2 -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,queues=2,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on,packed=on,netdev=mynet$i,vectors=6,mac=52:55:00:d1:$mac1:$mac2 -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
+    qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m $memory_size -smp $cpu_count -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,queues=2,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on,packed=on,netdev=mynet$i,vectors=6,mac=52:55:00:d1:$mac1:$mac2 -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
     echo 52:55:00:d1:$mac1:$mac2 >>mac.txt
 done
 # wait for all taps ready

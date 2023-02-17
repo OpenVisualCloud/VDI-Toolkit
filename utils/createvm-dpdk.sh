@@ -1,19 +1,21 @@
 #!/bin/sh
 
-if [ $# -lt 5 ]
+if [ $# -lt 7 ]
 then
-    echo "Usage: createvm.sh original_qcow2_name dest_dir start_vm vm_count vfio-interface nat|bridge"
+    echo "Usage: createvm.sh original_qcow2_name dest_dir start_vm vm_count cpu_count memory_size vfio-interface nat|bridge"
     echo "vfio-interface is the NIC name in ifconfig list"
     exit
 fi
 network_mode='nat'
-if [ $# -eq 6 ] 
+if [ $# -eq 8 ] 
 then 
-    network_mode=$6
+    network_mode=$8
 fi
-vfio_dev=$5
+vfio_dev=$7
 let start_vm=$3
 let vm_count=$4
+let cpu_count=$5
+let memory_size=$6
 dest_dir=$2
 org_image=$1
 ifconfig $vfio_dev up
@@ -47,6 +49,18 @@ if [ ! -d $dest_dir ]
 then
    echo "Dir $dest_dir not found!" >&2
    exit
+fi
+
+if (( $cpu_count < 1 )) || (( $cpu_count > 32 ))
+then
+    echo "cpu count should between 1~32"
+    exit
+fi
+
+if (( $memory_size < 2048 )) || (( $memory_size > 32768 ))
+then
+    echo "memory size  should between 2048~32768"
+    exit
 fi
 
 if [ $network_mode == 'nat' ] 
@@ -180,7 +194,7 @@ for ((i=$start_vm; i<(($start_vm+$vm_count)); i++)); do
     mac2=$(dec2hex $mac2)
     vnc_setting="-vnc 0.0.0.0:"$i
     ovs-vsctl add-port br2 vhost-user$i -- set Interface vhost-user$i type=dpdkvhostuser
-    qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m 4096 -smp 2 -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -object memory-backend-file,id=mem,size=4096M,mem-path=/nvme1,share=on -numa node,memdev=mem -mem-prealloc  -display none -chardev socket,id=char$i,path=/usr/local/var/run/openvswitch/vhost-user$i -netdev type=vhost-user,id=mynet$i,chardev=char$i,vhostforce,queues=2 -device virtio-net-pci,netdev=mynet$i,mq=on,vectors=6,mac=52:55:00:d1:$mac1:$mac2 -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
+    qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m $memory_size -smp $cpu_count -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -object memory-backend-file,id=mem,size=$memory_size'M',mem-path=/nvme1,share=on -numa node,memdev=mem -mem-prealloc  -display none -chardev socket,id=char$i,path=/usr/local/var/run/openvswitch/vhost-user$i -netdev type=vhost-user,id=mynet$i,chardev=char$i,vhostforce,queues=2 -device virtio-net-pci,netdev=mynet$i,mq=on,vectors=6,mac=52:55:00:d1:$mac1:$mac2 -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
    echo 52:55:00:d1:$mac1:$mac2 >>mac.txt
 done
 
