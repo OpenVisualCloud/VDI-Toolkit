@@ -64,7 +64,7 @@ def check_name(hwnd,name):
     global match_handle
     if sys.platform == "win32":
         title = win32gui.GetWindowText(hwnd)
-        print "title %s" % title
+        print ("title %s" % title)
         if title.find(name) > -1:
             match_handle = hwnd
 
@@ -83,10 +83,13 @@ def find_element_by_name_exist(driver, name):
                 if sys.platform == "win32":
                     win32gui.EnumWindows(check_name,name)
             else:                                          # remote, can not use win32gui
-                print"Remote find window name to match %s" % name
+                print("Remote find window name to match %s" % name)
                 elements = driver.find_elements_by_xpath("//*")
                 for element in elements:
-                    title = element.get_attribute("Name")
+                    try:
+                        title = element.get_attribute("Name")
+                    except:
+                        title = None
                     if title != None and title.find(name) > -1:
                         if app_class != None:
                             if element.get_attribute("ClassName") == app_class:
@@ -103,7 +106,7 @@ def launch_app(app_path):
     try:
         app_driver = webdriver.Remote(command_executor=app_url, desired_capabilities=app_caps)
     except Exception as e:
-        print "Can not find %s" % app_path
+        print ("Can not find %s" % app_path)
         return False
     return app_driver
 
@@ -156,7 +159,7 @@ def do_test(dirpath):
     global app_url
     global app_class
     global root_driver
-    print "xml : %s" % dirpath
+    print ("xml : %s" % dirpath)
     DOMTree = minidom.parse(dirpath)
     collection = DOMTree.documentElement
 
@@ -166,7 +169,7 @@ def do_test(dirpath):
         print("No splash!")
         splashscreen = 0
     else:
-        splashscreen = string.atoi(splash.childNodes[0].data)
+        splashscreen = int(splash.childNodes[0].data)
 
     try:
         app = collection.getElementsByTagName('app_name')[0]
@@ -182,7 +185,7 @@ def do_test(dirpath):
         print("No app_url!")
     else:
         app_url = url.childNodes[0].data
-        print "app_url : %s" % app_url
+        print ("app_url : %s" % app_url)
 
     try:
         url = collection.getElementsByTagName('app_class')[0]
@@ -190,7 +193,7 @@ def do_test(dirpath):
         print("No app_class!")
     else:
         app_class = url.childNodes[0].data
-        print "app_class : %s" % app_class
+        print ("app_class : %s" % app_class)
 
     if collection.hasAttribute("app_path"):
         setup_app(collection.getAttribute("app_path"))
@@ -204,10 +207,21 @@ def do_test(dirpath):
             try:
                 driver.find_element_by_name(clickname.childNodes[0].data).click()
             except:
-                driver.find_element_by_id(clickname.childNodes[0].data).click()
+                try:
+                    driver.find_element_by_id(clickname.childNodes[0].data).click()
+                except:
+                    print("Can not find name %s, click action skip" % (clickname.childNodes[0].data))
         elif type.childNodes[0].data == "edit":
             editname = action.getElementsByTagName('name')[0]
-            editBox = driver.find_element_by_class_name(editname.childNodes[0].data)
+            try:
+                editBox = driver.find_element_by_class_name(editname.childNodes[0].data)
+            except:
+                try:
+                    editBox = root_driver.find_element_by_name.find_element_by_class_name(editname.childNodes[0].data)
+                except:
+                    editBox = None
+                    print("Can not find name %s, edit action skip" % (editname.childNodes[0].data))
+
             try:
                 randomdata = action.getElementsByTagName('random')[0]
             except:
@@ -215,9 +229,10 @@ def do_test(dirpath):
                 editdata = action.getElementsByTagName('string')[0]
                 send_str = editdata.childNodes[0].data
             else:
-                randomcount = string.atoi(randomdata.childNodes[0].data)
+                randomcount = int(randomdata.childNodes[0].data)
                 send_str = generate_random_str(randomcount)
-            editBox.send_keys(send_str)
+            if editBox != None:
+                editBox.send_keys(send_str)
         elif type.childNodes[0].data == "key":
             editname = action.getElementsByTagName('name')[0]
             try:
@@ -229,13 +244,18 @@ def do_test(dirpath):
                     try:
                         editBox = root_driver.find_element_by_name(editname.childNodes[0].data)
                     except:
-                        print("Get name failed!")
+                        print("Can not find name %s, key action skip" % (editname.childNodes[0].data))
+                        editBox = None
             editdata = action.getElementsByTagName('keys')[0]
             count = action.getElementsByTagName('count')[0]
-            keycount = string.atoi(count.childNodes[0].data)
+            keycount = int(count.childNodes[0].data)
             str = get_send_key(editdata.childNodes[0].data)
-            for i in range(keycount):
-                editBox.send_keys(str)
+            if editBox != None:
+                for i in range(keycount):
+                    try:
+                        editBox.send_keys(str)
+                    except:
+                        print("Send %s fail" % (editdata.childNodes[0].data))
         elif type.childNodes[0].data == "delay":
             print("Just delay!")
         elif type.childNodes[0].data == "xpath":
@@ -243,7 +263,8 @@ def do_test(dirpath):
         else:
             print("error type!")
         delay = action.getElementsByTagName('delay')[0]
-        sleeptime = string.atof(delay.childNodes[0].data)
+        sleeptime = float(delay.childNodes[0].data)
+        print("delay %d s" % sleeptime)
         time.sleep(sleeptime)
 
 def findAllFile(base):
@@ -257,7 +278,7 @@ def main():
     global app_url 
     if len(sys.argv) > 1:
         app_url="http://"+sys.argv[1]+":4723"
-        print app_url
+        print (app_url)
     while 1:
         for xmlfile in findAllFile('.'):
             do_test(xmlfile)
