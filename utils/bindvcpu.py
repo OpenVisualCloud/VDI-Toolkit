@@ -15,6 +15,7 @@ threadlist=[]
 vcpulist=[] 
 monitor_file=""
 cpuset=None
+RECV_MAX=16*1024
 
 # Use qemu monitor interface, get the each vcpu thread id to threadlist
 def get_vcpu_threadid(monitor_file):
@@ -24,14 +25,14 @@ def get_vcpu_threadid(monitor_file):
     cpu_cmd  = "{\"execute\":\"query-cpus-fast\"}\n"
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.connect(monitor_file)
-        print(client.recv(1024).decode())
+        print(client.recv(RECV_MAX).decode())
         time.sleep(0.5)
         
         client.send(init_cmd.encode())
-        print(client.recv(1024).decode())
+        print(client.recv(RECV_MAX).decode())
         time.sleep(0.5)
         client.send(cpu_cmd.encode())
-        line = client.recv(2048).decode()
+        line = client.recv(RECV_MAX).decode()
         print(line)
         client.close()
         cpudata = json.loads(line).get('return')
@@ -176,6 +177,8 @@ def main():
             help()
             sys.exit()    
     get_vcpu_threadid(monitor_file)
+    systype=sys.platform
+    print(systype)
     get_xml_vcpubinding(xml_file)
     final_binding()
 
