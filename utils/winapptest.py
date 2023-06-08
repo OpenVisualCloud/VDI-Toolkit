@@ -127,12 +127,18 @@ def setup_app(path):
                 command_executor=app_url,
                 desired_capabilities= desired_caps)
             app_driver = launch_app(path)
-            #time.sleep(8)
-            app = find_element_by_name_exist(driver, app_name)
-            if app != None:
-                app_handle = app.get_attribute("NativeWindowHandle")
-            else:
-                app_handle = match_handle
+            
+            # try 2 times
+            for i in range(2):
+                app = find_element_by_name_exist(driver, app_name)
+                if app != None:
+                    app_handle = app.get_attribute("NativeWindowHandle")
+                    break
+                else:
+                    app_handle = match_handle
+                if app_handle != None:
+                    break
+                time.sleep(20)
             if app_handle != 0:
                 app_caps = {"appTopLevelWindow": str(hex(int(app_handle)))}
                 app_driver = webdriver.Remote(command_executor=app_url,
