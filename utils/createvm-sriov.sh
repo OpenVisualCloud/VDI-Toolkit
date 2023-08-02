@@ -84,6 +84,25 @@ else
    network_mode='nat'
    echo "use default nat mode"
 fi
+#check qemu version,qemu version less than 5.2.0 do no support packed
+qemu_version=`qemu-kvm --version | grep version | tr -d "QEMU emulator version"`
+echo "QEMU version $qemu_version"
+if [ $qemu_version \> "5.1.0" ]
+then
+    pack_setting=",packed=on"
+else
+    pack_setting=""
+fi
+echo "Packed setting $pack_setting"
+#check cpu model,SPR currently can not enable hvapic
+cpu_model=`lscpu | grep Model: | tr -d "Model: "`
+if [ $cpu_model == '143' ]
+then
+    hvapic_setting='off'
+else
+    hvapic_setting='on'
+fi
+echo "hvapic setting $hvapic_setting"
 image_type='increment'
 #copy image
 if [ $image_type == 'increment' ]
@@ -200,9 +219,9 @@ for ((i=$start_vm; i<(($start_vm+$vm_count)); i++)); do
     if (($i < (($total_vf+$start_vm))))
     then
         ip link set $sriov_dev vf $i mac 52:55:00:d1:$mac1:$mac2
-        qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m $memory_size -smp $cpu_count -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -device vfio-pci,host=${vf_list[$i]},id=net$i -nic none -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
+        qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m $memory_size -smp $cpu_count -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=$hvapic_setting,hv-spinlocks=0x1fff  -enable-kvm -display none -device vfio-pci,host=${vf_list[$i]},id=net$i -nic none -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
     else
-        qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m $memory_size -smp $cpu_count -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,queues=2,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on,packed=on,netdev=mynet$i,vectors=6,mac=52:55:00:d1:$mac1:$mac2 -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
+        qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m $memory_size -smp $cpu_count -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=$hvapic_setting,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,queues=2,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on$pack_setting,netdev=mynet$i,vectors=6,mac=52:55:00:d1:$mac1:$mac2 -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
     fi
    echo 52:55:00:d1:$mac1:$mac2 >>mac.txt
 done
