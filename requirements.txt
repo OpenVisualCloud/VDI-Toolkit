@@ -1,0 +1,12 @@
+Appium-Python-Client==0.24
+selenium==3.5.0
+setuptools==65.5.1
+pywin32
+Twisted==22.10
+pyOpenSSL==20.0.0
+qt4reactor==1.6
+service-identity==21.1.0
+rsa==4.7
+pyasn1==0.4.8
+attrs==20.3.0
+wheel==0.38.1
