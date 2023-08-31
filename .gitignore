@@ -10,4 +10,7 @@
 *.py[cod]
 *$py.class
 
+## video files
+*.h264
+*.264
 
