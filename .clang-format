@@ -1,0 +1,3 @@
+AlignConsecutiveAssignments: true
+DerivePointerAlignment: false
+ColumnLimit: 90

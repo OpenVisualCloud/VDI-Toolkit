@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2021, Intel Corporation
+* Copyright (c) 2023, Intel Corporation
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -46,8 +46,8 @@ enum {
 
 enum {
     QES_FOURCC_NV12 = QES_MAKEFOURCC('N', 'V', '1', '2'),   /*!< NV12 color planes. Native format for 4:2:0/8b Gen hardware implementation. */
-    QES_FOURCC_RGB4 = QES_MAKEFOURCC('R', 'G', 'B', '4'),   /*!< RGB4 (RGB32) color planes. BGRA is the order, ‘B’ is 8 MSBs, then 8 bits for ‘G’ channel, then ‘R’ and ‘A’ channels. */
-    QES_FOURCC_BGR4 = QES_MAKEFOURCC('B', 'G', 'R', '4'), /*!< RGBA color format. It is similar to MFX_FOURCC_RGB4 but with different order of channels. ‘R’ is 8 MSBs, then 8 bits for ‘G’ channel, then ‘B’ and ‘A’ channels. */
+    QES_FOURCC_RGB4 = QES_MAKEFOURCC('R', 'G', 'B', '4'),   /*!< RGB4 (RGB32) color planes. BGRA is the order, ï¿½Bï¿½ is 8 MSBs, then 8 bits for ï¿½Gï¿½ channel, then ï¿½Rï¿½ and ï¿½Aï¿½ channels. */
+    QES_FOURCC_BGR4 = QES_MAKEFOURCC('B', 'G', 'R', '4'), /*!< RGBA color format. It is similar to MFX_FOURCC_RGB4 but with different order of channels. ï¿½Rï¿½ is 8 MSBs, then 8 bits for ï¿½Gï¿½ channel, then ï¿½Bï¿½ and ï¿½Aï¿½ channels. */
 };
 
 enum {

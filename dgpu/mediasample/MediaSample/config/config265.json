@@ -1,0 +1,22 @@
+{
+  "encoder-specific": {
+    "outFile": "output.h265",
+    "codecID": "hevc",
+    "bitrate": 15000000,
+    "maxbitrate": 15000000,
+    "numOfRef": 1,
+    "gop": 30,
+    "framerate": 60,
+    "profile": "main",
+    "rcm": "vbr",
+    "transferMatrix": 0,
+    "skipFrameMode": 0,
+    "skipFrameSettingPar": "",
+    "frameLevelStats": false,
+    "blockLevelStats": false,
+    "statsOutputDirectory": "",
+    "roiSettingPar": "",
+    "refListSettingFile": "",
+    "targetFrameSizeSettingPar": ""
+  }
+}
