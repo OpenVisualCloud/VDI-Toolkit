@@ -96,7 +96,7 @@ qesStatus EncodeSample::ReInitOutput(uint32_t nAdapterNum)
 
     hres = CreateDXGIFactory1(__uuidof(IDXGIFactory6), (void**)(&pDXGIFactory));
     if (FAILED(hres)) {
-        printf("CreateDXGIFactory1() failed!\n");
+        printf("%s","CreateDXGIFactory1() failed!\n");
         ret = QES_ERR_INVALID_HANDLE;
 
     }
@@ -104,7 +104,7 @@ qesStatus EncodeSample::ReInitOutput(uint32_t nAdapterNum)
 
         hres = pDXGIFactory->EnumAdapters(nAdapterNum, &pAdapter);
         if (FAILED(hres)) {
-            printf("EnumAdapters() failed!\n");
+            printf("%s","EnumAdapters() failed!\n");
             ret = QES_ERR_INVALID_HANDLE;
         }
         else {
@@ -112,20 +112,20 @@ qesStatus EncodeSample::ReInitOutput(uint32_t nAdapterNum)
             CComPtr<IDXGIOutput> dxgi_output;
             hres = pAdapter->EnumOutputs(0, &dxgi_output);
             if (FAILED(hres)) {
-                printf("EnumOutputs() failed!\n");
+                printf("%s","EnumOutputs() failed!\n");
                 ret = QES_ERR_INVALID_HANDLE;
             }
             else {
                 CComPtr<IDXGIOutput1> dxgi_output1;
                 hres = dxgi_output->QueryInterface(__uuidof(dxgi_output1), reinterpret_cast<void**>(&dxgi_output1));
                 if (FAILED(hres)) {
-                    printf("QueryInterface() for IDXGIOutput1 failed!\n");
+                    printf("%s","QueryInterface() for IDXGIOutput1 failed!\n");
                     ret = QES_ERR_INVALID_HANDLE;
                 }
                 else {
                     hres = dxgi_output1->DuplicateOutput(m_pSourceDxDevice, &m_pDxDup);
                     if (FAILED(hres)) {
-                        printf("DuplicateOutput() failed!\n");
+                        printf("%s","DuplicateOutput() failed!\n");
                         ret = QES_ERR_INVALID_HANDLE;
                     }
                     else {
@@ -145,7 +145,7 @@ bool EncodeSample::OpenInputOutputFiles()
         m_outFile.open(m_config.GetOutputFileName(), ios::out | ios::binary);
         if (!m_outFile.is_open())
         {
-            printf("Opening output file failed!\n");
+            printf("%s","Opening output file failed!\n");
             return false;
         }
     }
@@ -157,24 +157,22 @@ bool EncodeSample::setQueueSize() {
     bool output;
     if (m_fixFrameRate > 0 && m_fixFrameRate < 10) {
         output = m_pqueue->SetMaxSize(m_fixFrameRate);
-        printf("queue length is set to: %d \n", m_pqueue->GetMaxSize());
     }
     else {
         output = m_pqueue->SetMaxSize(10);
-        printf("buffer queue length is set to 10 by default. \n");
     }
     return output;
 }
 
 void EncodeSample::PrintHelp()
 {
-    printf("Usage: cg_engine_lite.exe -cfg ConfigureFile [<options>]\n");
-    printf("Options: \n");
-    printf("    [-adapterNum number] - specifies adpter number for processing, starts from 0\n");
-    printf("    [-encodeonly 1or0] - 1 for capture several frames first then encode these frames repeatedly 0 or no input means capture & encode simultaneously. 1 shall be used for encode perf test.\n");
-    printf("    [-fixFPS number] - specifies a FPS limitation. \n");
-    printf("    [-n number] - specifies a total number of frames to be encoded. \n");
-    printf("Examples: cg_engine_lite.exe -cfg config.json \n");
+    printf("%s","Usage: cg_engine_lite.exe -cfg ConfigureFile [<options>]\n");
+    printf("%s","Options: \n");
+    printf("%s","    [-adapterNum number] - specifies adpter number for processing, starts from 0\n");
+    printf("%s","    [-encodeonly 1or0] - 1 for capture several frames first then encode these frames repeatedly 0 or no input means capture & encode simultaneously. 1 shall be used for encode perf test.\n");
+    printf("%s","    [-fixFPS number] - specifies a FPS limitation. \n");
+    printf("%s","    [-n number] - specifies a total number of frames to be encoded. \n");
+    printf("%s","Examples: cg_engine_lite.exe -cfg config.json \n");
 }
 
 bool EncodeSample::ParseInputString(vector<wchar_t*>& argList)
@@ -261,7 +259,7 @@ qesStatus EncodeSample::Init()
 
     if (!OpenInputOutputFiles())
     {
-        printf("OpenInputOutputFiles failed!\n");
+        printf("%s","OpenInputOutputFiles failed!\n");
         return QES_ERR_ABORTED;
     }
 
@@ -274,14 +272,13 @@ qesStatus EncodeSample::Init()
     qesStatus sts = InitExternalDevice(m_adapterNum);
     if (sts != QES_ERR_NONE)
     {
-        printf("InitExternalDevice failed!\n");
+        printf("%s","InitExternalDevice failed!\n");
         return sts;
     }
 #if 0
     sts = m_encoder->EncodeInit(m_encoderPars.GetEncoderSpecPars());
     if (sts != QES_ERR_NONE)
     {
-        printf("EncodeInit failed!\n");
         return sts;
     }
 #endif
@@ -301,10 +298,8 @@ qesStatus EncodeSample::InitExternalDevice(uint32_t adapterNum)
     qesStatus sts = QES_ERR_NONE;
 
     sts = CreateDX11Device(m_adapterNum);
-    printf("Adapter num is %d", m_adapterNum);
     if (sts != QES_ERR_NONE)
     {
-        printf("Failed to create device!\n");
         return QES_ERR_DEVICE_FAILED;
     }
 
@@ -315,7 +310,7 @@ qesStatus EncodeSample::InitExternalDevice(uint32_t adapterNum)
     sts = m_core->SetDevice(&pDev);
     if (sts != QES_ERR_NONE)
     {
-        printf("Failed to init device from Core!\n");
+        printf("%s","Failed to init device from Core!\n");
         return sts;
     }
 
@@ -340,7 +335,6 @@ qesStatus EncodeSample::CaptureTexture() {
     DXGI_OUTDUPL_FRAME_INFO frame_info;
     if (m_pDxDup) {
         hr = m_pDxDup->AcquireNextFrame(50, &frame_info, &dxgi_res);
-        //printf("a frame is acquired \n");
     }
     else {
         hr = DXGI_ERROR_ACCESS_LOST;
@@ -352,18 +346,16 @@ qesStatus EncodeSample::CaptureTexture() {
 
 
     if (FAILED(hr)) {
-        //printf("yohoho \n");
         bool re_capture = false;
         switch (hr) {
         case DXGI_ERROR_WAIT_TIMEOUT:
-            // printf("AcquireNextFrame returns DXGI_ERROR_WAIT_TIMEOUT!\n");
             // continue to next capture
             re_capture = true;
             return QES_ERR_INVALID_HANDLE;
 
         case DXGI_ERROR_ACCESS_LOST:
         case DXGI_ERROR_INVALID_CALL:
-            printf("AcquireNextFrame returns DXGI_ERROR_DEVICE_FAILED!\n");
+            printf("%s","AcquireNextFrame returns DXGI_ERROR_DEVICE_FAILED!\n");
             // release old  IDXGIOutputDuplication interface and create a new one 
             sts = ReInitOutput(m_adapterNum);
             if (sts != QES_ERR_NONE) {
@@ -391,7 +383,7 @@ qesStatus EncodeSample::CaptureTexture() {
         hr = dxgi_res->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&captex));
         if (FAILED(hr))
         {
-            printf("QueryInterface for ID3D11Texture2D failed");
+            printf("%s","QueryInterface for ID3D11Texture2D failed");
             return QES_ERR_INVALID_HANDLE;
         }
 
@@ -442,7 +434,7 @@ qesStatus EncodeSample::CaptureTexture() {
 
 qesStatus EncodeSample::ProcessOneFrame() {
     if (m_cNeedToCancel == true) {
-        printf("capture is finished \n");
+        printf("%s","capture is finished \n");
     }
     qesFrame* pIFrame;
     CComPtr<ID3D11Texture2D> textureDTE;
@@ -463,13 +455,11 @@ qesStatus EncodeSample::ProcessOneFrame() {
             textureDTE = m_buf.ptex_hdl;
         }
         else {
-            printf("nothing to encode! \n");
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             return QES_ERR_ABORTED;
         }
         //do not use nullptr to register texture
         if (textureDTE == NULL) {
-            printf("need another texture! \n");
             return QES_ERR_ABORTED;
         }
 
@@ -482,13 +472,13 @@ qesStatus EncodeSample::ProcessOneFrame() {
             m_sts = m_config.SetEncoderFrameInfoFromDxgiDesc(frame_desc);
             if (m_sts != QES_ERR_NONE)
             {
-                printf("SetInputInfoFromDxgiDesc failed!\n");
+                printf("%s","SetInputInfoFromDxgiDesc failed!\n");
                 return m_sts;
             }
             m_sts = m_encoder->EncodeInit(m_config.GetEncoderSpecPars());
             if (m_sts != QES_ERR_NONE)
             {
-                printf("EncodeInit failed!\n");
+                printf("%s","EncodeInit failed!\n");
                 return m_sts;
             }
             m_isInited = TRUE;
@@ -505,7 +495,7 @@ qesStatus EncodeSample::ProcessOneFrame() {
         m_sts = m_core->RegisterTextureToEncoder(&handle, &pIFrame);
         if (m_sts != QES_ERR_NONE)
         {
-            printf("RegisterTextureToEncoder failed!\n");
+            printf("%s","RegisterTextureToEncoder failed!\n");
             return m_sts;
         }
     }
@@ -513,7 +503,7 @@ qesStatus EncodeSample::ProcessOneFrame() {
 
     if (m_sts != QES_ERR_NONE && m_sts != QES_ERR_MORE_DATA)
     {
-        printf("EncodeFrame failed!\n");
+        printf("%s","EncodeFrame failed!\n");
         return m_sts;
     }
 
@@ -521,10 +511,8 @@ qesStatus EncodeSample::ProcessOneFrame() {
     {
         do
         {
-            auto TestInit = std::chrono::steady_clock::now();
             qesBitstream* pbs;
             m_sts = m_encoder->GetBitstream(&pbs);
-            //printf("bitstream get\n");
             if (m_sts == QES_ERR_NONE || m_sts == QES_ERR_NONE_PARTIAL_OUTPUT) {
 
                 if (m_outFile.is_open()) {
@@ -535,20 +523,12 @@ qesStatus EncodeSample::ProcessOneFrame() {
                 printf("GetBitsStream() returns error %d", m_sts);
                 break;
             }
-            auto TestEnd = std::chrono::steady_clock::now();
-            int Tduration = std::chrono::duration_cast<std::chrono::milliseconds>(TestEnd - TestInit).count();
-            //if (Tduration > 15) {
-            //    printf("GetBitstream costs %d ms. \n", Tduration);
-            //}
-
-
         } while (m_sts == QES_ERR_NONE_PARTIAL_OUTPUT);
     }
 
     m_core->UnregisterTexture(pIFrame);
     //m_pDxDup->ReleaseFrame();
     m_frameNum++;
-    //printf("Frame number %d encoded.\n", m_frameNum);
 
     if (m_numFrames) {
         if (m_frameNum > m_numFrames) {
@@ -577,7 +557,7 @@ qesStatus EncodeSample::Run()
     m_Fduration = m_CurrTime - m_InitTime;
 
     if (m_fixFrameRate <= 0) {
-        printf("Fix frame rate is not detected, starting unlimited mode... \n");
+        printf("%s","Fix frame rate is not detected, starting unlimited mode... \n");
         m_frametime = 0;
     }
     else {
@@ -674,14 +654,13 @@ int ICaptureThreadLoop(EncodeSample* pengine, int nLoop, bool isLoop) {
             std::this_thread::sleep_for(std::chrono::milliseconds(3));
         }
         else {
-            //printf("ahaha \n");
             std::this_thread::sleep_for(std::chrono::milliseconds(3));
         }
         if (pengine->ifCancel()) {
             cNeedToCancel = true;
         }
     }
-    printf("capture is done!!!!!\n");
+    printf("%s","capture is done!!!!!\n");
     return 0;
 }
 
@@ -706,14 +685,14 @@ int wmain(int argc, wchar_t* argv[])
 
     if (!engine.ParseInputString(argList))
     {
-        printf("ParseInputString failed!\n");
+        printf("%s","ParseInputString failed!\n");
         return -1;
     }
 
     qesStatus sts = engine.Init();
     if (sts != QES_ERR_NONE)
     {
-        printf("Failed to init engine!\n");
+        printf("%s","Failed to init engine!\n");
         return -1;
     }
 
@@ -724,7 +703,7 @@ int wmain(int argc, wchar_t* argv[])
 
     if (sts != QES_ERR_NONE)
     {
-        printf("Failed to init engine!\n");
+        printf("%s","Failed to init engine!\n");
         return -1;
     }
 
@@ -735,7 +714,7 @@ int wmain(int argc, wchar_t* argv[])
     engine.setClock(&clock);
     if (sts != QES_ERR_NONE)
     {
-        printf("Failed to Connect Bufferqueue!\n");
+        printf("%s","Failed to Connect Bufferqueue!\n");
         return -1;
     }
 
@@ -744,12 +723,12 @@ int wmain(int argc, wchar_t* argv[])
     if (engine.ifLoop()) {
         DDACapture.wait();
     }
-    printf("start encoding...\n");
+    printf("%s","start encoding...\n");
     sts = engine.Run();
 
     if (sts != QES_ERR_NONE)
     {
-        printf("Failed to run engine!\n");
+        printf("%s","Failed to run engine!\n");
         result = -1;
     }
 
@@ -758,7 +737,7 @@ int wmain(int argc, wchar_t* argv[])
 
     if (sts != QES_ERR_NONE)
     {
-        printf("Failed to close engine!\n");
+        printf("%s","Failed to close engine!\n");
         result = -1;
     }
 
