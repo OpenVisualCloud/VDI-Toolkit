@@ -10,4 +10,16 @@
 *.py[cod]
 *$py.class
 
+## video files
+*.h264
+*.264
 
+## dependencies
+dgpu\mediasample\ediaSample\deps\include\nlohmann
+dgpu\mediasample\ediaSample\deps\include\nlohmann\*
+
+## built executables
+dgpu\mediasample\MediaSample\x64
+dgpu\mediasample\MediaSample\x64\*
+dgpu\mediasample\MediaSample\bin
+dgpu\mediasample\MediaSample\bin\*
