@@ -52,14 +52,14 @@ The usage of this script shall be:
 This script is used to map ports for all VM. VNC ports of VM will be set to 10001~10016 and RDP ports will be set to 20001~20016 according to VM IDs. No specific params acquired.
 The usage of this script shall be:
 ```bash
-4_vm_port_forward.sh
+./4_vm_port_forward.sh
 ```
 
 ## Shutdown VMs
 This script is used to shutdown all VMs that are generated with previous scripts.
 The usage of this script shall be:
 ```bash
-5_shutdown_VMs.sh
+./5_shutdown_VMs.sh
 ```
 
 ## Unplug VM vGPU
@@ -77,4 +77,64 @@ this command will detach vGPU from VM named win2k19 and move the vGPU HW data co
 if we need to retach the vGPU, we could use virsh command:
 ```bash
 virsh attach-device win2k19 device.xml
+```
+
+## Dump Debug Info
+This folder ``7_dump_debug_info`` contains a debug script ``7_dump_debug_info.sh`` and a tool ``intel_gpu_top`` to dump debug info logs of Host.
+The debug info contains system info, gpu info and vm info. Running the script with root privaliage and a folder ``dumplogs`` and sub-folders ``host``, ``host_config`` and ``virsh`` will be created and logs files will be saved in them.
+
+Params:
+- Use ``-h/--help`` to get the usage options of this script.
+- Use ``--with-dependency`` to install the dependency for the first time. Besides, this script does not cover the installation of the ``XPU manager`` tool, and mannually installation is needed refering to [Install XPU manager](README.md).
+- Use ``--gpu-card=`` to indicate the first GPU card id, default is 0. When there's an iGPU, this param need to be set as 1.
+
+Example Commands:
+```bash
+cd 7_dump_debug_info
+sudo ./7_dump_debug_info.sh -h
+sudo ./7_dump_debug_info.sh --with-dependency
+sudo ./7_dump_debug_info.sh --gpu-card=1
+```
+
+Dumped debug logs:
+```
+dumplogs/
+├── host
+│   ├── CPU_pwmon.log
+│   ├── dmesg.log
+│   ├── free.log
+│   ├── GPUTOP-renderD128.json
+│   ├── i915_engine_info_0.log
+│   ├── i915_error_state_0.log
+│   ├── i915_gem_objects_0.log
+│   ├── journalctl.log
+│   ├── ps_aux.log
+│   ├── sar_dump.log
+│   ├── top.log
+│   └── xpum
+│       ├── xpum-disc-card0.txt
+│       ├── xpum-dump-card0.txt
+│       ├── xpum-list.txt
+│       └── xpum-stat-card0.txt
+├── host_config
+│   ├── cmdline.txt
+│   ├── cpu_numa_info.txt
+│   ├── cpu_type
+│   ├── GPU-device-map.txt
+│   ├── i915_driver_check.txt
+│   ├── kmod_version.txt
+│   ├── lscpu-p.txt
+│   ├── lscpu.txt
+│   ├── lspci_card_info.txt
+│   ├── lspci-t.txt
+│   ├── media_driver_version.txt
+│   ├── numa_info.txt
+│   ├── PCI.txt
+│   ├── scaling_governor
+│   ├── slabinfo.txt
+│   └── uname-r.txt
+└── virsh
+    ├── virsh-VM-list.txt
+    ├── virsh-win10.xml
+    └── virsh-win2k19.xml
 ```
