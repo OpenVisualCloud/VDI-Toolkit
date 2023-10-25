@@ -93,7 +93,7 @@ then
     echo "Create increment file $dest_dir/testvm${i}.qcow2..."
     if [ ! -f $dest_dir/testvm${i}.qcow2 ]
     then
-        qemu-img create -b $dest_dir/base$start_vm-$vm_count.qcow2 -f qcow2 $dest_dir/testvm${i}.qcow2
+        qemu-img create -b $dest_dir/base$start_vm-$vm_count.qcow2 -f qcow2 $dest_dir/testvm${i}.qcow2 -F qcow2
     else
         echo "Increment file $dest_dir/testvm${i}.qcow2 exist"
     fi
@@ -170,7 +170,7 @@ for ((i=$start_vm; i<(($start_vm+$vm_count)); i++)); do
     ((mac2++))
     mac2=$(dec2hex $mac2)
     vnc_setting="-vnc 0.0.0.0:"$i
-    qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m $memory_size -smp $cpu_count -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,queues=2,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on,packed=on,netdev=mynet$i,vectors=6,mac=52:55:00:d1:$mac1:$mac2 -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
+    qemu-kvm -drive file=$dest_dir/testvm$i.qcow2,format=qcow2,if=virtio,aio=native,cache=none -m $memory_size -smp $cpu_count -M q35 -cpu host,host-cache-info=on,migratable=on,hv-time=on,hv-relaxed=on,hv-vapic=on,hv-spinlocks=0x1fff  -enable-kvm -display none -netdev tap,id=mynet$i,vhost=on,queues=2,ifname=tap$i,script=no,downscript=no -device virtio-net-pci,mq=on,netdev=mynet$i,vectors=6,mac=52:55:00:d1:$mac1:$mac2 -device virtio-balloon-pci,id=balloon0 -chardev socket,id=charmonitor,path=$dest_dir/testvm52:55:00:d1:$mac1:$mac2.monitor,server=on,wait=off -mon chardev=charmonitor,id=monitor,mode=control $vnc_setting -machine usb=on -device usb-tablet &
     echo 52:55:00:d1:$mac1:$mac2 >>mac.txt
 done
 # wait for all taps ready
