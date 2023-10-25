@@ -52,6 +52,7 @@ done
 
 if [[ ${install_dependency} = 1 ]]; then
     sudo yum install -y sysstat
+    sudo yum install -y tree
 fi
 
 CURRENT_DATE=`date +%y%m%d_%H%M`
@@ -201,6 +202,7 @@ function gpu_data(){
             sudo ./intel_gpu_top drm:/dev/dri/renderD$abs -o ${LOGPATH}/host/GPUTOP-renderD$abs.json -J &
         fi
         card=$((card+1))
+        GPU_CARD=$((GPU_CARD+1))
     done
     pkill -kill intel_gpu_top
 
