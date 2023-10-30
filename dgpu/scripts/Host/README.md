@@ -1,5 +1,7 @@
 # Host Setup Guidance
 ## Introduction
+Intel provides SRIOV-based GPU virtualization to support VDI solution with Intel Data Center GPU. The following figure shows the architecture of Intel dGPU for VDI
+<div align=center><img src="./asset/VDI-solution-arc-flex.png"></div>
 
 The purpose of the file is to guide user to set GPU SRIOV with Intel Data Center GPU (Flex series) on CentOS Server Platform. The whole process will include server BIOS settings, kvm host setup and vGPU and VM setup.
 
