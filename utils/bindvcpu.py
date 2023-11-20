@@ -100,8 +100,21 @@ def get_xml_vcpubinding(xml_file):
     print(vcpulist)
 
 
-# Create cgroup, bind the vcpu use information from threadlist and vcpulist
-def final_binding():
+# Get cgroup version
+def get_cgroup_version():
+    p = subprocess.run('stat -fc %T /sys/fs/cgroup/',shell=True,stdout=subprocess.PIPE)
+    output = p.stdout.decode()
+    if output.find("cgroup2") >= 0:
+        print("cgroup v2")
+        return "v2"
+    elif output.find("tmpfs") >= 0:
+        print("cgroup v1")
+        return "v1"
+    else:
+        print("No cgroup, return")
+        return 0
+
+def bind_cgroupv1():
     global monitor_file
     global cpuset
     vcpus = len(threadlist)
@@ -115,13 +128,13 @@ def final_binding():
     threadstatus="cat /proc/{0}/status | grep Tgid".format(threadlist[0])
     cpuset_dir = "/sys/fs/cgroup/cpuset/" + monitor_file.split('/')[-1]
     print(threadstatus)
-    
+
     piddata = subprocess.run(threadstatus,shell=True,stdout=subprocess.PIPE)
     pid = piddata.stdout.decode()
     pid = pid.split(':')[-1]
     pid = int(pid)
     print("Qemu pid %d" % pid)
-    
+
     mkdir="mkdir " + cpuset_dir
     print(mkdir)
     cgroupdata = subprocess.run(mkdir,shell=True,stdout=subprocess.PIPE)
@@ -141,8 +154,6 @@ def final_binding():
     print(taskcmd)
     cgroupdata = subprocess.run(taskcmd,shell=True,stdout=subprocess.PIPE)
     print(cgroupdata.stdout.decode())
-
-
     for i in range(cpurange):
         vcpu_dir = "{0}/vcpu{1}".format(cpuset_dir,i)
         vcpu_mkdir = "mkdir " + vcpu_dir
@@ -153,16 +164,58 @@ def final_binding():
         print(vcpusetcmd)
         cgroupdata = subprocess.run(vcpusetcmd,shell=True,stdout=subprocess.PIPE)
         print(cgroupdata.stdout.decode())
-        
+
         vcpumemsetcmd = "echo 0 > {0}/cpuset.mems".format(vcpu_dir)
         print(vcpumemsetcmd)
         cgroupdata = subprocess.run(vcpumemsetcmd,shell=True,stdout=subprocess.PIPE)
         print(cgroupdata.stdout.decode())
-        
+
         vcputaskcmd = "echo {0} > {1}/tasks".format(threadlist[i],vcpu_dir)
         print(vcputaskcmd)
         cgroupdata = subprocess.run(vcputaskcmd,shell=True,stdout=subprocess.PIPE)
         print(cgroupdata.stdout.decode())
+
+def cputomask(vcpu):
+    if vcpu.find("-") >0:
+        vcpurange = vcpu.split('-')
+        cpulist = range(int(vcpurange[0]),int(vcpurange[1])+1)
+    else:
+        vcpurange = vcpu.split(',')
+        cpulist = list(map(int,vcpurange))
+    print(cpulist)
+    return cpulist
+
+def bind_cgroupv2():
+    global monitor_file
+    global cpuset
+    vcpus = len(threadlist)
+    cpus = len(vcpulist)
+
+    if vcpus >= cpus:
+        cpurange = cpus
+    else:
+        cpurange = vcpus
+    if cpurange <= 0:
+         return
+
+    for i in range(cpurange):
+        mask = cputomask(vcpulist[i])
+        print("set affinity %d" % threadlist[i])
+        os.sched_setaffinity(threadlist[i], mask)
+        affinity = os.sched_getaffinity(threadlist[i])
+        print(affinity)
+
+
+# Create cgroup, bind the vcpu use information from threadlist and vcpulist
+
+def final_binding():
+    version =  get_cgroup_version()
+    if version == "v1":
+        bind_cgroupv1()
+    elif  version == "v2":
+        bind_cgroupv2()
+    else:
+        return
 
 def help():
     print ("""
