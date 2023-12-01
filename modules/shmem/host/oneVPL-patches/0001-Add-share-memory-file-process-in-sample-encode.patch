@@ -1,0 +1,385 @@
+From 3cbbccef4a6358a9fb438a72e31868fbb88a3604 Mon Sep 17 00:00:00 2001
+From: luoying1234 <ying2.luo@intel.com>
+Date: Wed, 15 Nov 2023 21:18:14 +0800
+Subject: [PATCH] Add share memory file process in sample encode. 1. Add
+ -shmfile option to enable share memory file process. 2. Add
+ SharedYUVFileReaderHelper to help read shared raw data file. 3. Add loop file
+ read function and time-trace log function. 4. Enable fps option to encode
+ frames at a given fps. 5. Add -shmperf option to enable duplicated frame
+ encoding to test performance.
+
+Signed-off-by: luoying1234 <ying2.luo@intel.com>
+---
+ tools/legacy/sample_common/include/sample_utils.h  | 80 +++++++++++++++++++++-
+ tools/legacy/sample_common/src/sample_utils.cpp    | 46 +++++++++++--
+ .../legacy/sample_encode/include/pipeline_encode.h |  6 ++
+ tools/legacy/sample_encode/src/pipeline_encode.cpp | 43 +++++++++++-
+ tools/legacy/sample_encode/src/sample_encode.cpp   |  8 +++
+ 5 files changed, 177 insertions(+), 6 deletions(-)
+
+diff --git a/tools/legacy/sample_common/include/sample_utils.h b/tools/legacy/sample_common/include/sample_utils.h
+index 46821a0..ea7ff97 100644
+--- a/tools/legacy/sample_common/include/sample_utils.h
++++ b/tools/legacy/sample_common/include/sample_utils.h
+@@ -8,6 +8,7 @@
+ #define __SAMPLE_UTILS_H__
+
+ #include <stdio.h>
++#include <time.h>
+ #include <algorithm>
+ #include <fstream>
+ #include <map>
+@@ -264,6 +265,63 @@ inline mfxU16 ReadTargetFrameSize(const std::string& line) {
+ }
+ } // namespace TCBRCTestFile
+
++namespace ShareFile {
++
++inline size_t LoopRead(mfxU8 *buffer, size_t size, FILE* fp, size_t fileSize) {
++    if (buffer == nullptr || size == 0 || fp == nullptr || fileSize == 0) return 0;
++
++    size_t res = 0;
++    long curPos = ftell(fp);
++    if (curPos + size > fileSize) {
++        size_t bytesToEnd = fileSize - curPos;
++        size_t bytes1 = fread(buffer, 1, bytesToEnd, fp);
++        fseek(fp, 0, SEEK_SET);
++        size_t bytes2 = fread(buffer + bytesToEnd, 1, size - bytesToEnd, fp);
++        res = bytes1 + bytes2;
++        // printf("bytes1 %ld, bytes2 %ld\n", bytes1, bytes2);
++    }
++    else {
++        res = fread(buffer, 1, size, fp);
++    }
++    return res;
++}
++
++inline size_t GetFileSize(FILE *fp) {
++    if (fp == nullptr) return 0;
++    long oriPos = ftell(fp);
++    fseek(fp, 0, SEEK_END);
++    size_t fileSize = ftell(fp);
++    fseek(fp, oriPos, SEEK_SET);
++    return fileSize;
++}
++
++#define SHMEM_LOG(format, ...) \
++    do { \
++        struct timeval tv; \
++        gettimeofday(&tv, NULL); \
++        struct tm* ptm = localtime(&tv.tv_sec); \
++        char time_string[40]; \
++        strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", ptm); \
++        printf("[%s.%03ld:%s:%d] ", time_string, tv.tv_usec / 1000, __FILE__, __LINE__); \
++        printf(format, ##__VA_ARGS__); \
++        printf("\n"); \
++    } while (false)
++
++#pragma pack(push, 4)
++struct ShareMetaData {
++    uint64_t pts;
++    uint32_t dataType;
++    uint32_t format;
++    uint32_t pitch;
++    uint32_t width;
++    uint32_t height;
++    uint64_t dataSize;
++    uint32_t writeFlag;
++};
++#pragma pack(pop)
++
++} // namespace ShareFile
++
+ mfxStatus GetFrameLength(mfxU16 width, mfxU16 height, mfxU32 ColorFormat, mfxU32& length);
+
+ bool IsDecodeCodecSupported(mfxU32 codecFormat);
+@@ -801,16 +859,36 @@ public:
+                            mfxU32 ColorFormat,
+                            bool shouldShiftP010 = false);
+     virtual mfxStatus SkipNframesFromBeginning(mfxU16 w, mfxU16 h, mfxU32 viewId, mfxU32 nframes);
+-    virtual mfxStatus LoadNextFrame(mfxFrameSurface1* pSurface);
++    virtual mfxStatus LoadNextFrame(mfxFrameSurface1* pSurface, bool useLastFrame = false, size_t lastFrameOffset = 0);
+     virtual mfxStatus LoadNextFrame(mfxFrameSurface1* pSurface, int bytes_to_read, mfxU8* buf_read);
+     virtual void Reset();
+     mfxU32 m_ColorFormat; // color format of input YUV data, YUV420 or NV12
+
++    friend class SharedYUVFileReaderHelper; // help read shared yuv file
++
++    inline void SetShmFileMode() { m_bShmFileMode = true; }
++
++    inline void SetShmPerfTest() { m_bShmPerfTest = true; }
++
+ protected:
+     std::vector<FILE*> m_files;
+
+     bool shouldShift10BitsHigh;
+     bool m_bInited;
++    bool m_bShmFileMode;
++    bool m_bShmPerfTest;
++};
++
++class SharedYUVFileReaderHelper {
++public:
++    SharedYUVFileReaderHelper():m_lastFrameOffset(-1) {}
++    virtual ~SharedYUVFileReaderHelper() {}
++    // for share file with specific params
++    bool CheckIfShareFrameWriteComplete(CSmplYUVReader &reader);
++    inline void SetLastFrameOffset(size_t offset) { m_lastFrameOffset = offset; }
++    inline int64_t GetLastFrameOffset() { return m_lastFrameOffset; }
++private:
++    int64_t m_lastFrameOffset;
+ };
+
+ class CSmplBitstreamWriter {
+diff --git a/tools/legacy/sample_common/src/sample_utils.cpp b/tools/legacy/sample_common/src/sample_utils.cpp
+index 82556eb..06bd9dd 100644
+--- a/tools/legacy/sample_common/src/sample_utils.cpp
++++ b/tools/legacy/sample_common/src/sample_utils.cpp
+@@ -99,7 +99,9 @@ CSmplYUVReader::CSmplYUVReader()
+         : m_ColorFormat(MFX_FOURCC_YV12),
+           m_files(),
+           shouldShift10BitsHigh(false),
+-          m_bInited(false) {}
++          m_bInited(false),
++          m_bShmFileMode(false),
++          m_bShmPerfTest(false) {}
+
+ mfxStatus CSmplYUVReader::Init(std::list<std::string> inputs,
+                                mfxU32 ColorFormat,
+@@ -179,7 +181,7 @@ mfxStatus CSmplYUVReader::SkipNframesFromBeginning(mfxU16 w,
+     return MFX_ERR_NONE;
+ }
+
+-mfxStatus CSmplYUVReader::LoadNextFrame(mfxFrameSurface1* pSurface) {
++mfxStatus CSmplYUVReader::LoadNextFrame(mfxFrameSurface1* pSurface, bool useLastFrame, size_t lastFrameOffset) {
+     // check if reader is initialized
+     MSDK_CHECK_ERROR(m_bInited, false, MFX_ERR_NOT_INITIALIZED);
+     MSDK_CHECK_POINTER(pSurface, MFX_ERR_NULL_PTR);
+@@ -219,6 +221,7 @@ mfxStatus CSmplYUVReader::LoadNextFrame(mfxFrameSurface1* pSurface) {
+         MFX_FOURCC_Y210 == pInfo.FourCC || MFX_FOURCC_Y410 == pInfo.FourCC ||
+         MFX_FOURCC_Y216 == pInfo.FourCC) {
+         //Packed format: Luminance and chrominance are on the same plane
++        long oriPos = ftell(m_files[vid]);
+         switch (m_ColorFormat) {
+             case MFX_FOURCC_A2RGB10:
+             case MFX_FOURCC_AYUV:
+@@ -228,13 +231,21 @@ mfxStatus CSmplYUVReader::LoadNextFrame(mfxFrameSurface1* pSurface) {
+                 ptr   = std::min({ pData.R, pData.G, pData.B });
+                 ptr   = ptr + pInfo.CropX * 4 + pInfo.CropY * pData.Pitch;
+
++                if (useLastFrame) { fseek(m_files[vid], lastFrameOffset, SEEK_SET); }
+                 for (i = 0; i < h; i++) {
+-                    nBytesRead = (mfxU32)fread(ptr + i * pitch, 1, 4 * w, m_files[vid]);
+-
++                    if (m_bShmFileMode) {
++                        static size_t fileSize = ShareFile::GetFileSize(m_files[vid]);
++                        nBytesRead = (mfxU32)ShareFile::LoopRead(ptr + i * pitch, 4 * w, m_files[vid], fileSize);
++                    }
++                    else {
++                        nBytesRead = (mfxU32)fread(ptr + i * pitch, 1, 4 * w, m_files[vid]);
++                    }
++
+                     if ((mfxU32)4 * w != nBytesRead) {
+                         return MFX_ERR_MORE_DATA;
+                     }
+                 }
++                if (useLastFrame) { fseek(m_files[vid], oriPos, SEEK_SET); }
+                 break;
+             case MFX_FOURCC_YUY2:
+             case MFX_FOURCC_UYVY:
+@@ -504,6 +515,33 @@ mfxStatus CSmplYUVReader::LoadNextFrame(mfxFrameSurface1* pSurface,
+     return MFX_ERR_NONE;
+ }
+
++bool SharedYUVFileReaderHelper::CheckIfShareFrameWriteComplete(CSmplYUVReader &reader) {
++    // read share meta data for checking
++    static uint64_t selfCnt = 0;
++    ShareFile::ShareMetaData shareMetaData;
++    if (reader.m_files.empty()) return false;
++    FILE* fp = reader.m_files[0];
++    if (fp == nullptr) return false;
++    // 1. get file size at the first time
++    static size_t fileSize = ShareFile::GetFileSize(fp);
++    // 2. Loop reader the share file to get meta data
++    setvbuf(fp, NULL, _IONBF, 0); // set buf = 0, so fread can get the refresh data
++    long oriPos = ftell(fp);
++    ShareFile::LoopRead(reinterpret_cast<mfxU8*>(&shareMetaData), sizeof(shareMetaData), fp, fileSize);
++    // 3. Check the correct pts and write flag
++    if (shareMetaData.pts != selfCnt || shareMetaData.writeFlag != 1) {
++        fseek(fp, oriPos, SEEK_SET);
++        // SHMEM_LOG("Debug: Something wrong: share meta data pts %lu, pitch %d, width %d, height %d, writeFlag %d, oriPos %ld", shareMetaData.pts, shareMetaData.pitch, shareMetaData.width, shareMetaData.height, shareMetaData.writeFlag, oriPos);
++        return false;
++    }
++    else {
++        SHMEM_LOG("Read pts: %lu, pitch %d, width %d, height %d, writeFlag %d, oriPos %ld", shareMetaData.pts, shareMetaData.pitch, shareMetaData.width, shareMetaData.height, shareMetaData.writeFlag, oriPos);
++        selfCnt++;
++        if (fileSize) SetLastFrameOffset((oriPos + sizeof(shareMetaData)) % fileSize);
++        return true;
++    }
++}
++
+ CSmplBitstreamWriter::CSmplBitstreamWriter()
+         : m_nProcessedFramesNum(0),
+           m_bSkipWriting(false),
+diff --git a/tools/legacy/sample_encode/include/pipeline_encode.h b/tools/legacy/sample_encode/include/pipeline_encode.h
+index 241e5d2..552a5d6 100644
+--- a/tools/legacy/sample_encode/include/pipeline_encode.h
++++ b/tools/legacy/sample_encode/include/pipeline_encode.h
+@@ -186,6 +186,8 @@ struct sInputParams {
+
+     bool QPFileMode;
+     bool TCBRCFileMode;
++    bool ShmFileMode;
++    bool ShmPerfTest;
+
+     mfxU32 nTimeout;
+     mfxU16 nPerfOpt; // size of pre-load buffer which used for loop encode
+@@ -379,6 +381,7 @@ protected:
+
+     std::pair<CSmplBitstreamWriter*, CSmplBitstreamWriter*> m_FileWriters;
+     CSmplYUVReader m_FileReader;
++    SharedYUVFileReaderHelper m_sharedFileReaderHelper;
+     CEncTaskPool m_TaskPool;
+     QPFile::Reader m_QPFileReader;
+     TCBRCTestFile::Reader m_TCBRCFileReader;
+@@ -412,6 +415,7 @@ protected:
+
+     mfxU32 m_nNumView;
+     mfxU32 m_nFramesToProcess; // number of frames to process
++    mfxU32 m_nFPS; // input fps
+
+ #if defined(LINUX32) || defined(LINUX64)
+     std::string m_strDevicePath; //path to device for processing
+@@ -423,6 +427,8 @@ protected:
+
+     bool m_bQPFileMode;
+     bool m_bTCBRCFileMode;
++    bool m_bShmFileMode;
++    bool m_bShmPerfTest;
+
+     bool isV4L2InputEnabled;
+     FILE* m_round_in;
+diff --git a/tools/legacy/sample_encode/src/pipeline_encode.cpp b/tools/legacy/sample_encode/src/pipeline_encode.cpp
+index 2daac16..1143571 100644
+--- a/tools/legacy/sample_encode/src/pipeline_encode.cpp
++++ b/tools/legacy/sample_encode/src/pipeline_encode.cpp
+@@ -1286,6 +1286,7 @@ CEncodingPipeline::CEncodingPipeline()
+ #endif
+           m_FileWriters(NULL, NULL),
+           m_FileReader(),
++          m_sharedFileReaderHelper(),
+           m_TaskPool(),
+           m_QPFileReader(),
+           m_TCBRCFileReader(),
+@@ -1310,6 +1311,7 @@ CEncodingPipeline::CEncodingPipeline()
+           m_EncCtrls(),
+           m_nNumView(0),
+           m_nFramesToProcess(0),
++          m_nFPS(0),
+ #if defined(LINUX32) || defined(LINUX64)
+           m_strDevicePath(),
+ #endif
+@@ -1830,6 +1832,14 @@ mfxStatus CEncodingPipeline::Init(sInputParams* pParams) {
+         MSDK_CHECK_STATUS(sts, "m_FileReader.Init failed");
+     }
+
++    m_bShmFileMode = pParams->ShmFileMode;
++
++    if (m_bShmFileMode) m_FileReader.SetShmFileMode();
++
++    m_bShmPerfTest = pParams->ShmPerfTest;
++
++    if (m_bShmPerfTest) m_FileReader.SetShmPerfTest();
++
+     sts = InitFileWriters(pParams);
+     MSDK_CHECK_STATUS(sts, "InitFileWriters failed");
+
+@@ -1866,6 +1876,8 @@ mfxStatus CEncodingPipeline::Init(sInputParams* pParams) {
+
+     m_nFramesToProcess = pParams->nNumFrames;
+
++    m_nFPS = pParams->nMaxFPS;
++
+     // If output isn't specified work in performance mode and do not insert idr
+     m_bCutOutput = pParams->dstFileBuff.size() ? !pParams->bUncut : false;
+
+@@ -2297,6 +2309,7 @@ mfxStatus CEncodingPipeline::Run() {
+
+     // main loop, preprocessing and encoding
+     while (MFX_ERR_NONE <= sts || MFX_ERR_MORE_DATA == sts) {
++        msdk_tick run_start = time_get_tick();
+         if ((m_nFramesToProcess != 0) && (nFramesProcessed == m_nFramesToProcess)) {
+             break;
+         }
+@@ -2468,6 +2481,12 @@ mfxStatus CEncodingPipeline::Run() {
+                 break;
+             }
+         }
++        msdk_tick run_end = time_get_tick();
++        msdk_tick duration = (run_end - run_start) / 1000;
++        if (m_nFPS > 0) {
++            msdk_tick sleepTime = 1000 / m_nFPS - duration > 0 ? 1000 / m_nFPS - duration : 0;
++            MSDK_SLEEP(sleepTime);
++        }
+
+         nFramesProcessed++;
+     }
+@@ -2686,7 +2705,29 @@ mfxStatus CEncodingPipeline::LoadNextFrame(mfxFrameSurface1* pSurf) {
+                 MSDK_CHECK_STATUS(sts, "m_FileReader.SkipNframesFromBeginning failed");
+             }
+
+-            sts = m_FileReader.LoadNextFrame(pSurf);
++            bool useLastFrame = false;
++            if (m_bShmFileMode) { // share file mode
++                uint32_t timeoutCnt = 0;
++                uint32_t timeoutFlag = 2000;
++                while (false == m_sharedFileReaderHelper.CheckIfShareFrameWriteComplete(m_FileReader)) {
++                    // printf("Debug: check the share frame write is not complete!\n");
++                    if (m_bShmPerfTest) {
++                        static uint64_t dupPts = 0;
++                        printf("Will use last frame! offset is %ld, duplicate pts %ld\n", m_sharedFileReaderHelper.GetLastFrameOffset(), dupPts);
++                        dupPts++;
++                        useLastFrame = true;
++                        break;
++                    }
++                    usleep(5000);//sleep 5ms for next time check
++                    timeoutCnt++;
++                    if (timeoutCnt >= timeoutFlag) {
++                        printf("Share file has no more data! Timeout: 10s!\n");
++                        return MFX_ERR_MORE_DATA;
++                    }
++                }
++            }
++
++            sts = m_FileReader.LoadNextFrame(pSurf, useLastFrame, m_sharedFileReaderHelper.GetLastFrameOffset());
+         }
+
+         if ((MFX_ERR_MORE_DATA == sts) && !m_bTimeOutExceed) {
+diff --git a/tools/legacy/sample_encode/src/sample_encode.cpp b/tools/legacy/sample_encode/src/sample_encode.cpp
+index 6ff1b0a..3f58819 100644
+--- a/tools/legacy/sample_encode/src/sample_encode.cpp
++++ b/tools/legacy/sample_encode/src/sample_encode.cpp
+@@ -767,6 +767,8 @@ mfxStatus ParseInputString(char* strInput[], mfxU32 nArgNum, sInputParams* pPara
+     pParams->nPRefType          = MFX_P_REF_DEFAULT;
+     pParams->QPFileMode         = false;
+     pParams->TCBRCFileMode      = false;
++    pParams->ShmFileMode        = false;
++    pParams->ShmPerfTest        = false;
+     pParams->BitrateLimit       = MFX_CODINGOPTION_OFF;
+     pParams->adapterType        = mfxMediaAdapterType::MFX_MEDIA_UNKNOWN;
+     pParams->dGfxIdx            = -1;
+@@ -1065,6 +1067,12 @@ mfxStatus ParseInputString(char* strInput[], mfxU32 nArgNum, sInputParams* pPara
+             pParams->QPFileMode    = true;
+             pParams->strQPFilePath = strInput[++i];
+         }
++        else if (msdk_match(strInput[i], "-shmfile")) {
++            pParams->ShmFileMode    = true;
++        }
++        else if (msdk_match(strInput[i], "-shmperf")) {
++            pParams->ShmPerfTest    = true;
++        }
+ #if D3D_SURFACES_SUPPORT
+         else if (msdk_match(strInput[i], "-d3d")) {
+             pParams->memType          = D3D9_MEMORY;
+--
+1.8.3.1

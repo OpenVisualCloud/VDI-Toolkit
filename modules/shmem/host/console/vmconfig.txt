@@ -1,0 +1,4 @@
+xxx.xxx.xxx.xxx /tmp/serial1
+xxx.xxx.xxx.xxx /tmp/serial2
+xxx.xxx.xxx.xxx /tmp/serial3
+xxx.xxx.xxx.xxx /tmp/serial4

@@ -1,0 +1,4 @@
+../../oneVPL/_build/sample_encode h264 -hw -i /dev/shm/shm1 -rgb4 -w 1920 -h 1080 -b 20000 -fps 30 -shmfile -shmperf -n 300 -o ./dump1.h264
+../../oneVPL/_build/sample_encode h264 -hw -i /dev/shm/shm2 -rgb4 -w 1920 -h 1080 -b 20000 -fps 30 -shmfile -shmperf -n 300 -o ./dump2.h264
+../../oneVPL/_build/sample_encode h264 -hw -i /dev/shm/shm3 -rgb4 -w 1920 -h 1080 -b 20000 -fps 30 -shmfile -shmperf -n 300 -o ./dump3.h264
+../../oneVPL/_build/sample_encode h264 -hw -i /dev/shm/shm4 -rgb4 -w 1920 -h 1080 -b 20000 -fps 30 -shmfile -shmperf -n 300 -o ./dump4.h264
