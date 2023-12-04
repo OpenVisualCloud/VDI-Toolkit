@@ -1,19 +1,5 @@
 #!/usr/bin/env python
-#******************************************************************************
-#
-# Copyright (c) 2023 Intel Corporation. All rights reserved.
-#
-# This code is licensed under the MIT License (MIT).
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-#
-#******************************************************************************
+# -*- coding:utf-8 -*-
 
 import os
 import sys
@@ -21,9 +7,9 @@ import getopt
 import subprocess
 import time
 iplist=[]      
-processlist=[]
+processdict={}
 ipfile="vm_ip.txt"
-rdp_processlist=[]      
+rdp_processdict = {}
 def find_vm_ip():
     global iplist
     global ipfile
@@ -87,8 +73,8 @@ def main():
         if systype == "linux" or systype == "linux2":
             p=subprocess.Popen(["python2.7", "winapptest.py",vm_ip])
         else:
-            p=subprocess.Popen(["python", "winapptest.py",vm_ip],shell=True)
-        processlist.append(p);
+            p=subprocess.Popen(["python", "winapptest.py",vm_ip],shell=False)
+        processdict[vm_ip] = p;
         time.sleep(0.05)
         if len(connect_py) != 0:
             if systype == "linux" or systype == "linux2":
@@ -98,44 +84,52 @@ def main():
                     p=subprocess.Popen(["python", connect_py,username,password,vm_ip],shell=True)
                 else:
                     p=subprocess.Popen(["python", connect_py,password,vm_ip],shell=True)
-            rdp_processlist.append(p);
+            rdp_processdict[vm_ip] = p
             time.sleep(0.05)
-
 
     while True:
         i=0
+        pid_dict={}
         for vm_ip in iplist:
-            p=processlist[i]
-            str="vmip {} process status {}"
-            status=p.poll()
+            p = processdict[vm_ip]
+            proccess_str = "vmip {} process status {}"
+            status = p.poll()
             if status == None:
-                  print(str.format(vm_ip," OK"))
+                  print(proccess_str.format(vm_ip," OK"))
+                  print("process pid %d" % p.pid)
             else:
-                  print(str.format(vm_ip,p.returncode))
-                  processlist.pop(i)
+                  print(proccess_str.format(vm_ip,p.returncode))
                   if systype == "linux" or systype == "linux2":
                       p=subprocess.Popen(["python2.7", "winapptest.py",vm_ip])
                   else:
-                      p=subprocess.Popen(["python", "winapptest.py",vm_ip],shell=True)
-                  processlist.insert(i,p);
+                      p=subprocess.Popen(["python", "winapptest.py",vm_ip],shell=False)
+                  processdict[vm_ip] = p
+
+            pid_dict[vm_ip] = p.pid
             time.sleep(2)
             if len(connect_py) != 0:
-                p=rdp_processlist[i]
-                str="vmip {} {} process status {}"
-                status=p.poll()
-                if status == None:
-                    print(str.format(vm_ip,connect_type," OK"))
+                proccess_str="vmip {} {} process status {}"
+                p = rdp_processdict.get(vm_ip)
+                if p:
+                    status = p.poll()
                 else:
-                    print(str.format(vm_ip,connect_type,p.returncode))
-                    rdp_processlist.pop(i)
+                    status = None
+                if status == None:
+                    print(proccess_str.format(vm_ip,connect_type," OK"))
+                else:
+                    print(proccess_str.format(vm_ip,connect_type,p.returncode))
+
                     if systype == "linux" or systype == "linux2":
                         p=subprocess.Popen(["python2.7",connect_py,username,password,vm_ip])
                     else:
                         p=subprocess.Popen(["python", connect_py,username,password,vm_ip],shell=True)
-                    rdp_processlist.insert(i,p);
+                    rdp_processdict[vm_ip] = p
                 time.sleep(2)
             i=i+1
-
+        listfile = open('plist.txt', 'w')
+        for  ip,pid in  pid_dict.items():
+            listfile.write(ip+','+str(pid)+'\n')
+        listfile.close()
     if systype == "linux" or systype == "linux2":
         testinput=input()
     else:

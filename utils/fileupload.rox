@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<apptest>
+
+<action title="file upload">
+   <type>upload</type>
+   <src_name>testpattern.bmp</src_name>
+   <dest_name>c:\test\testpattern.bmp</dest_name>
+   <count>1</count>
+   <delay>1</delay>
+</action>
+
+</apptest>

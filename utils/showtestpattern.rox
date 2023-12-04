@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<apptest  app_path="c:\\windows\system32\\mspaint.exe">
+<app_parameter>c:\\test\\testpattern.bmp</app_parameter>
+
+<action title="wait for app load">
+   <type>delay</type>
+   <delay>0.1</delay>
+</action>
+
+<action title="taskmgr window">
+   <type>click</type>
+   <name>testpattern.bmp - Paint</name>
+   <delay>0.1</delay>
+</action>
+
+<action title="full screen app">
+   <type>key</type>
+   <name>testpattern.bmp - Paint</name>
+   <keys>F11</keys>
+   <count>1</count>
+   <delay>1</delay>
+</action>
+
+
+</apptest>

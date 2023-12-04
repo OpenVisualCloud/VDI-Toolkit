@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<apptest>
+
+<action title="run exe">
+   <type>exe</type>
+   <name>echo for /f "skip=1 tokens=2" %%s in ('query user %USERNAME%') do (%windir%\System32\tscon.exe %%s /dest:console)>disconnect.bat</name>
+   <count>1</count>
+   <delay>0</delay>
+</action>
+
+<action title="run exe">
+   <type>exe</type>
+   <name>disconnect.bat</name>
+   <count>1</count>
+   <delay>0</delay>
+</action>
+
+
+</apptest>

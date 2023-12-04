@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<apptest  app_path="c:\\windows\system32\\taskmgr.exe">
+
+<action title="wait for app load">
+   <type>delay</type>
+   <delay>0.5</delay>
+</action>
+
+<action title="taskmgr window">
+   <type>click</type>
+   <name>TaskManagerWindow</name>
+   <delay>0.1</delay>
+</action>
+
+<action title="set detail window">
+   <type>click</type>
+   <name>More details</name>
+   <delay>0.1</delay>
+</action>
+
+<action title="set performance windows">
+   <type>click</type>
+   <name>Performance</name>
+   <delay>0.1</delay>
+</action>
+
+<action title="set CPU windows focus">
+   <type>click</type>
+   <name>CPU</name>
+   <delay>0.1</delay>
+</action>
+
+<action title="cpu ratio">
+   <type>get</type>
+   <name>sidebar_cpu_util</name>
+   <delay>0</delay>
+</action>
+
+<action title="cpu speed">
+   <type>get</type>
+   <name>sidebar_cpu_speed</name>
+   <delay>0</delay>
+</action>
+
+<action title="memory status">
+   <type>get</type>
+   <name>sidebar_mem_util</name>
+   <delay>0.1</delay>
+</action>
+
+<action title="set ethernet windows focus">
+   <type>click</type>
+   <name>Ethernet</name>
+   <delay>0.1</delay>
+</action>
+
+<action title="network send">
+   <type>get</type>
+   <name>netSend</name>
+   <delay>0</delay>
+</action>
+
+<action title="network recieve">
+   <type>get</type>
+   <name>netReceive</name>
+   <delay>0</delay>
+</action>
+
+<action title="close app">
+   <type>key</type>
+   <name>TaskManagerWindow</name>
+   <keys>ALT+F4</keys>
+   <count>1</count>
+   <delay>4</delay>
+</action>
+
+</apptest>
