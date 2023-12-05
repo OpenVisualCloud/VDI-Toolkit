@@ -1,0 +1,37 @@
+From eef5c83e9a561aa0b5d73c83c2a05502f45c7ca0 Mon Sep 17 00:00:00 2001
+From: Xiaohui Gu <xiaohui.gu@intel.com>
+Date: Fri, 1 Dec 2023 16:05:31 +0800
+Subject: [PATCH] Add HW encoder codec type
+
+Add gstreamer VAAPIJPEG type
+---
+ spice/enums.h    | 1 +
+ spice/protocol.h | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/spice/enums.h b/spice/enums.h
+index 172cc4d..c554a87 100644
+--- a/spice/enums.h
++++ b/spice/enums.h
+@@ -148,6 +148,7 @@ typedef enum SpiceVideoCodecType {
+     SPICE_VIDEO_CODEC_TYPE_H264,
+     SPICE_VIDEO_CODEC_TYPE_VP9,
+     SPICE_VIDEO_CODEC_TYPE_H265,
++    SPICE_VIDEO_CODEC_TYPE_VAAPIJPEG,
+
+     SPICE_VIDEO_CODEC_TYPE_ENUM_END
+ } SpiceVideoCodecType;
+diff --git a/spice/protocol.h b/spice/protocol.h
+index c5cbb6b..f4a4c3f 100644
+--- a/spice/protocol.h
++++ b/spice/protocol.h
+@@ -150,6 +150,7 @@ enum {
+     SPICE_DISPLAY_CAP_PREF_VIDEO_CODEC_TYPE,
+     SPICE_DISPLAY_CAP_CODEC_VP9,
+     SPICE_DISPLAY_CAP_CODEC_H265,
++    SPICE_DISPLAY_CAP_CODEC_VAAPIJPEG,
+ };
+
+ enum {
+--
+1.8.3.1

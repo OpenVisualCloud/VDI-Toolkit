@@ -1,0 +1,32 @@
+From cf342f0e962d48171df89f447ae7a3bf1296ed0d Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@denx.de>
+Date: Sat, 7 Jan 2023 20:03:31 +0100
+Subject: [PATCH 2/2] jpegdec: Disable libjpeg-turbo SIMD acceleration support
+ for now
+
+The libjpeg-turbo SIMD acceleration support suffers from multiple
+unresolved cornercases. Disable the libjpeg-turbo for now until
+those cornercases are resolved.
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/3694>
+Signed-off-by: Xiaohui Gu <xiaohui.gu@intel.com>
+---
+ subprojects/gst-plugins-good/ext/jpeg/gstjpegdec.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/subprojects/gst-plugins-good/ext/jpeg/gstjpegdec.c b/subprojects/gst-plugins-good/ext/jpeg/gstjpegdec.c
+index 06559ad..15d1ab5 100644
+--- a/subprojects/gst-plugins-good/ext/jpeg/gstjpegdec.c
++++ b/subprojects/gst-plugins-good/ext/jpeg/gstjpegdec.c
+@@ -47,6 +47,9 @@
+ #include "gst/gst-i18n-plugin.h"
+ #include <jerror.h>
+
++/* Disable libjpeg-turbo support for now, due to unresolved cornercases */
++#undef JCS_EXTENSIONS
++
+ #define MIN_WIDTH  1
+ #define MAX_WIDTH  65535
+ #define MIN_HEIGHT 1
+--
+1.8.3.1

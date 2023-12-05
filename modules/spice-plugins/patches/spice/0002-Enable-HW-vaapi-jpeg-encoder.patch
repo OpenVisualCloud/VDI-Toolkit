@@ -1,0 +1,214 @@
+From dd7c384b98220d102b7944336c4e8920380c5c86 Mon Sep 17 00:00:00 2001
+From: Xiaohui Gu <xiaohui.gu@intel.com>
+Date: Mon, 4 Dec 2023 13:25:59 +0800
+Subject: [PATCH 2/2] Enable HW vaapi jpeg encoder
+
+Default use gstreamer-vaapi:jpegenc
+as stream encoder.
+Need to add SPICE_VIDEO_CODEC_TYPE_VAAPIJPEG
+in spice-protocol enum.h.
+Add gstreamer-vaapi:jpeg type in tests.
+---
+ server/gstreamer-encoder.c         | 14 ++++++++++++--
+ server/reds.c                      |  6 ++++--
+ server/stream-channel.c            |  1 +
+ server/tests/test-codecs-parsing.c |  2 +-
+ server/tests/test-gst.c            |  8 +++++---
+ server/tests/test-video-encoders   | 16 ++++++++++++++--
+ server/video-stream.c              |  4 ++++
+ 7 files changed, 41 insertions(+), 10 deletions(-)
+
+diff --git a/server/gstreamer-encoder.c b/server/gstreamer-encoder.c
+index 3ca04d7..8cd3436 100644
+--- a/server/gstreamer-encoder.c
++++ b/server/gstreamer-encoder.c
+@@ -900,6 +900,8 @@ static const gchar* get_gst_codec_name(const SpiceGstEncoder *encoder)
+         return "x264enc";
+     case SPICE_VIDEO_CODEC_TYPE_VP9:
+         return "vp9enc";
++    case SPICE_VIDEO_CODEC_TYPE_VAAPIJPEG:
++        return "vaapijpegenc";
+     default:
+         /* gstreamer_encoder_new() should have rejected this codec type */
+         spice_warning("unsupported codec type %d", encoder->base.codec_type);
+@@ -961,6 +963,11 @@ static gboolean create_pipeline(SpiceGstEncoder *encoder)
+          */
+         gstenc_opts = g_strdup("byte-stream=true aud=true qp-min=15 qp-max=35 tune=4 sliced-threads=true speed-preset=ultrafast intra-refresh=true");
+         break;
++    case SPICE_VIDEO_CODEC_TYPE_VAAPIJPEG:
++        encoder->base.codec_type = SPICE_VIDEO_CODEC_TYPE_MJPEG; //not notice client about hw encode
++        converter = "vaapipostproc";
++        gstenc_opts = g_strdup("! queue");
++        break;
+     default:
+         /* gstreamer_encoder_new() should have rejected this codec type */
+         spice_warning("unsupported codec type %d", encoder->base.codec_type);
+@@ -991,7 +998,9 @@ static gboolean create_pipeline(SpiceGstEncoder *encoder)
+ #ifdef HAVE_GSTREAMER_0_10
+     GstAppSinkCallbacks appsink_cbs = {NULL, NULL, &new_sample, NULL, {NULL}};
+ #else
+-    GstAppSinkCallbacks appsink_cbs = {NULL, NULL, &new_sample, {NULL}};
++    GstAppSinkCallbacks appsink_cbs = {
++        .new_sample = new_sample,
++    };
+ #endif
+     gst_app_sink_set_callbacks(encoder->appsink, &appsink_cbs, encoder, NULL);
+
+@@ -1739,7 +1748,8 @@ VideoEncoder *gstreamer_encoder_new(SpiceVideoCodecType codec_type,
+     spice_return_val_if_fail(codec_type == SPICE_VIDEO_CODEC_TYPE_MJPEG ||
+                              codec_type == SPICE_VIDEO_CODEC_TYPE_VP8 ||
+                              codec_type == SPICE_VIDEO_CODEC_TYPE_VP9 ||
+-                             codec_type == SPICE_VIDEO_CODEC_TYPE_H264, NULL);
++                             codec_type == SPICE_VIDEO_CODEC_TYPE_H264 ||
++                             codec_type == SPICE_VIDEO_CODEC_TYPE_VAAPIJPEG, NULL);
+
+     GError *err = NULL;
+     if (!gst_init_check(NULL, NULL, &err)) {
+diff --git a/server/reds.c b/server/reds.c
+index ee8cf38..1b25548 100644
+--- a/server/reds.c
++++ b/server/reds.c
+@@ -3550,11 +3550,11 @@ err:
+
+ static const char default_renderer[] = "sw";
+ #if defined(HAVE_GSTREAMER_1_0) || defined(HAVE_GSTREAMER_0_10)
+-#define GSTREAMER_CODECS "gstreamer:mjpeg;gstreamer:h264;gstreamer:vp8;gstreamer:vp9;"
++#define GSTREAMER_CODECS "gstreamer:vaapijpeg;gstreamer:mjpeg;gstreamer:vp8;gstreamer:vp9;gstreamer:h264;"
+ #else
+ #define GSTREAMER_CODECS ""
+ #endif
+-static const char default_video_codecs[] = "spice:mjpeg;" GSTREAMER_CODECS;
++static const char default_video_codecs[] = GSTREAMER_CODECS "spice:mjpeg;";
+
+ /* new interface */
+ SPICE_GNUC_VISIBLE SpiceServer *spice_server_new(void)
+@@ -3672,6 +3672,7 @@ static const EnumNames video_codec_names[] = {
+     {SPICE_VIDEO_CODEC_TYPE_VP8, "vp8"},
+     {SPICE_VIDEO_CODEC_TYPE_H264, "h264"},
+     {SPICE_VIDEO_CODEC_TYPE_VP9, "vp9"},
++    {SPICE_VIDEO_CODEC_TYPE_VAAPIJPEG, "vaapijpeg"},
+     {0, NULL},
+ };
+
+@@ -3680,6 +3681,7 @@ static const int video_codec_caps[] = {
+     SPICE_DISPLAY_CAP_CODEC_VP8,
+     SPICE_DISPLAY_CAP_CODEC_H264,
+     SPICE_DISPLAY_CAP_CODEC_VP9,
++    SPICE_DISPLAY_CAP_CODEC_MJPEG, //currently not notice client about VAAPIJPEG
+ };
+
+ char *reds_get_video_codec_fullname(RedVideoCodec *codec)
+diff --git a/server/stream-channel.c b/server/stream-channel.c
+index 1d71c12..6b1d775 100644
+--- a/server/stream-channel.c
++++ b/server/stream-channel.c
+@@ -380,6 +380,7 @@ stream_channel_get_supported_codecs(StreamChannel *channel, uint8_t *out_codecs)
+         SPICE_DISPLAY_CAP_CODEC_H264,
+         SPICE_DISPLAY_CAP_CODEC_VP9,
+         SPICE_DISPLAY_CAP_CODEC_H265,
++        SPICE_DISPLAY_CAP_CODEC_MJPEG,  //currently not notice client about VAAPIJPEG
+     };
+
+     bool supported[SPICE_N_ELEMENTS(codec2cap)];
+diff --git a/server/tests/test-codecs-parsing.c b/server/tests/test-codecs-parsing.c
+index 0037c05..22a44be 100644
+--- a/server/tests/test-codecs-parsing.c
++++ b/server/tests/test-codecs-parsing.c
+@@ -29,7 +29,7 @@ static void codecs_good(void)
+         "spice:mjpeg;;spice:mjpeg;;;",
+         ";;spice:mjpeg;;spice:mjpeg;;;",
+ #if defined(HAVE_GSTREAMER_1_0) || defined(HAVE_GSTREAMER_0_10)
+-        "gstreamer:mjpeg;gstreamer:h264;gstreamer:vp8;",
++        "gstreamer:vaapijpeg;gstreamer:mjpeg;gstreamer:h264;gstreamer:vp8;",
+         ";;spice:mjpeg;;gstreamer:mjpeg;gstreamer:h264;gstreamer:vp8;",
+ #endif
+     };
+diff --git a/server/tests/test-gst.c b/server/tests/test-gst.c
+index 43ee400..d4fb57e 100644
+--- a/server/tests/test-gst.c
++++ b/server/tests/test-gst.c
+@@ -310,6 +310,8 @@ static const EncoderInfo encoder_infos[] = {
+ #else
+       "", "h264parse ! avdec_h264" },
+ #endif
++    { "gstreamer-vaapi:jpeg", gstreamer_encoder_new, SPICE_VIDEO_CODEC_TYPE_VAAPIJPEG,
++      "caps=image/jpeg", "jpegdec" },
+     { NULL, NULL, SPICE_VIDEO_CODEC_TYPE_ENUM_END, NULL, NULL }
+ };
+
+@@ -408,7 +410,6 @@ int main(int argc, char *argv[])
+     }
+
+     gst_init(&argc, &argv);
+-
+     // TODO give particular error if pipeline fails to be created
+
+     create_output_pipeline(encoder, output_frames, NULL);
+@@ -604,8 +605,9 @@ create_pipeline(const char *desc, SampleProc sample_proc, void *param)
+         return NULL;
+     }
+
+-    static const GstAppSinkCallbacks appsink_cbs_template =
+-        { NULL, NULL, new_sample, ._gst_reserved={NULL} };
++    static const GstAppSinkCallbacks appsink_cbs_template = {
++        .new_sample = new_sample
++    };
+     GstAppSinkCallbacks appsink_cbs = appsink_cbs_template;
+     gst_app_sink_set_callbacks(pipeline->appsink, &appsink_cbs, pipeline, NULL);
+
+diff --git a/server/tests/test-video-encoders b/server/tests/test-video-encoders
+index 039dd21..9e2e3fd 100755
+--- a/server/tests/test-video-encoders
++++ b/server/tests/test-video-encoders
+@@ -4,14 +4,14 @@ set -e
+
+ base_test() {
+     echo "Running test with options: $*"
+-    ./test-gst -i 'videotestsrc pattern=14 foreground-color=0x4080ff background-color=0x402000 kx=-2 ky=-4 kxy=14 kt=3 num-buffers=100 ! video/x-raw,width=1024,height=768 ! videoconvert qos=false' "$@"
++    ./test-gst -i 'videotestsrc pattern=14 foreground-color=0x4080ff background-color=0x402000 kx=-2 ky=-4 kxy=14 kt=3 num-buffers=100 ! video/x-raw,format=I420,width=1024,height=768 ! videoconvert qos=false' "$@"
+ }
+
+ # check different clippings
+ # note that due to some internal alignment we are using odd number for sizes
+ for clipping in '' '--clipping (10%,10%)x(409,307)'
+ do
+-    for encoder in mjpeg 'gstreamer:mjpeg --min-psnr 16' gstreamer:vp8 gstreamer:vp9 gstreamer:h264
++    for encoder in mjpeg 'gstreamer:mjpeg --min-psnr 16' gstreamer:vp8 gstreamer:h264
+     do
+         for split in '' '--split-lines=40'
+         do
+@@ -23,3 +23,15 @@ do
+         done
+     done
+ done
++# add encoder gstreamer-vaapi:jpeg
++for clipping in '' '--clipping (10%,10%)x(409,307)'
++do
++    for split in '' '--split-lines=40'
++    do
++        # TODO check if encoder is supported
++        for format in 32BIT RGBA
++        do
++            base_test -f $format -e 'gstreamer-vaapi:jpeg' --min-psnr 24 $clipping $split
++        done
++    done
++done
+diff --git a/server/video-stream.c b/server/video-stream.c
+index 6714d78..9755469 100644
+--- a/server/video-stream.c
++++ b/server/video-stream.c
+@@ -750,8 +750,12 @@ static VideoEncoder* dcc_create_video_encoder(DisplayChannelClient *dcc,
+
+         VideoEncoder* video_encoder = video_codec->create(video_codec->type, starting_bit_rate, cbs, bitmap_ref, bitmap_unref);
+         if (video_encoder) {
++            spice_debug("created video_encoder codec_type %d", video_codec->type);
+             return video_encoder;
+         }
++        else {
++            spice_warning("can't create video_encoder code_type %d, try next one", video_codec->type);
++        }
+     }
+
+     /* Try to use the builtin MJPEG video encoder as a fallback */
+--
+1.8.3.1
