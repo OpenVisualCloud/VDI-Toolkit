@@ -30,3 +30,5 @@ done
 
 cd ${PLATFORM_PATH}
 echo -e "\nn\ny\nn\nn\nn\nn\ny\nn" | sudo ./install-sg2.sh
+
+sudo yum install qemu-kvm qemu-img libvirt virt-install libvirt-client virt-manager virt-viewer

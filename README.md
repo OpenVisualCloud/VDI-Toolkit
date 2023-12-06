@@ -18,7 +18,7 @@ VDI solution needs to provide different configuraiton for different use scenario
 
 ## Modules to help improve VDI
 - [Module to share memory between Host and VM or among VMs](./modules/shmem/README.md)
-- [Enable oneVPL HW acceleration encoding for libspice](./modules/spice-plugins/README.md)
+- [Enable VA-API HW acceleration encoding for libspice](./modules/spice-plugins/README.md)
 
 ## Enable VGPU in VDI with Intel Server GPU
 GPU acceleration for VDI solution is very critical for profession and power VDI users. Intel Server GPU series provide SRIOV-based GPI virtualization for VDI solutions. To enable Intel server GPU virutalization feature for VDI, you can refer to:
