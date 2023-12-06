@@ -16,6 +16,10 @@ Intel VDI Tool Kit provides relative functions and scripts to enable or optimize
 ## VDI Auto Test Facilities
 VDI solution needs to provide different configuraiton for different use scenarios. To get the best TCO for one usages, an easy-to-use benchmark tool is must. Scripts in utils provide quick ways to deploy VMs in VDI server; assets in vm folder provide test automation facility to benchmark VDI with special applications. Please go to [Test facility](./vm/README.md) for details.
 
+## Modules to help improve VDI
+- [Module to share memory between Host and VM or among VMs](./modules/shmem/README.md)
+- [Enable oneVPL HW acceleration encoding for libspice](./modules/spice-plugins/README.md)
+
 ## Enable VGPU in VDI with Intel Server GPU
 GPU acceleration for VDI solution is very critical for profession and power VDI users. Intel Server GPU series provide SRIOV-based GPI virtualization for VDI solutions. To enable Intel server GPU virutalization feature for VDI, you can refer to:
 
