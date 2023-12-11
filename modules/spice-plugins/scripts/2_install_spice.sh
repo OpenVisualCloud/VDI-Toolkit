@@ -69,6 +69,7 @@ git am ${SPICE_SERVER_PATCH_PATH}//*.patch
 export C_INCLUDE_PATH=/opt/intel/spice/include/spice-1
 . /opt/rh/devtoolset-7/enable && \
 SPICE_PROTOCOL_CFLAGS="-I/opt/intel/spice/include/spice-1" \
+SPICE_PROTOCOL_LIBS="/opt/intel/spice/lib" \
 ./autogen.sh --prefix=/opt/intel/spice -localstatedir=/opt/intel/spice/var \
 --sysconfdir=/opt/intel/spice/etc --libdir=/opt/intel/spice/lib
 make -j$(nproc)

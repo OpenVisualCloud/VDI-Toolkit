@@ -1,7 +1,7 @@
-From cf342f0e962d48171df89f447ae7a3bf1296ed0d Mon Sep 17 00:00:00 2001
+From 3eb004528542f70095c76f14b0ba0a2738f57933 Mon Sep 17 00:00:00 2001
 From: Marek Vasut <marex@denx.de>
 Date: Sat, 7 Jan 2023 20:03:31 +0100
-Subject: [PATCH 2/2] jpegdec: Disable libjpeg-turbo SIMD acceleration support
+Subject: [PATCH 2/3] jpegdec: Disable libjpeg-turbo SIMD acceleration support
  for now
 
 The libjpeg-turbo SIMD acceleration support suffers from multiple

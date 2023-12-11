@@ -139,12 +139,11 @@ cd ${SRC_PATH}
 git clone ${GSTCORE_REPO}
 cd gstreamer
 git checkout 1.20.3 -b dev_1.20.3
-git am ${PATCH_PATH}/0001-avviddec-change-AV_CODEC_CAP_AUTO_THREADS-AV_CODEC_C.patch
-git am ${PATCH_PATH}/0002-jpegdec-Disable-libjpeg-turbo-SIMD-acceleration-supp.patch
+git am ${PATCH_PATH}/*.patch
 . /opt/rh/devtoolset-9/enable && \
 meson build \
 --libdir=/opt/intel/gst/lib --libexecdir=/opt/intel/gst/lib \
---prefix=/opt/intel/gst --buildtype=debug \
+--prefix=/opt/intel/gst --buildtype=release -Dpackage-origin="https://gitlab.freedesktop.org/gstreamer" \
 -Dexamples=disabled -Dtests=disabled -Ddoc=disabled -Dintrospection=disabled \
 -Dgtk_doc=disabled -Dpython=disabled  -Dugly=enabled \
 -Dcustom_subprojects="gst-plugins-base,gst-plugins-good,gst-plugins-bad,gst-plugins-ugly" \
