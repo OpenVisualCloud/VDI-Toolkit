@@ -101,6 +101,7 @@ class VMsnapshotthread(QThread):
         systype=sys.platform
         connect_type = self.run_parameters['snapshot_default_type']
         username="-u " + self.run_parameters['username']
+        # should add password=xxxx in vmmonitor.cfg
         password="-p " + self.run_parameters['password']
 
         taskmgr_processdict ={}
@@ -143,6 +144,7 @@ class VMsnapshotthread(QThread):
             else:
                 connect_py = self.run_parameters['linux_vnc_snapshot_path']
                 username=""
+                # Should add vnc_password=xxxx in vmmonitor.cfg
                 password="-p " + self.run_parameters['vnc_password']
         else:
             outdir = "-o " + os.getcwd() + "\\"
@@ -151,6 +153,7 @@ class VMsnapshotthread(QThread):
             else:
                 connect_py = self.run_parameters['win_vnc_snapshot_path']
                 username=""
+                # should add vnc_password=xxxx in vmmonitor.cfg
                 password="-p " + self.run_parameters['vnc_password']
 
         if len(connect_py) != 0:
@@ -407,6 +410,7 @@ class VMPanel(QtWidgets.QWidget):
         systype=sys.platform
         connect_type = self.run_parameters['snapshot_default_type']
         username="-u " + self.run_parameters['username']
+        # should add password=xxx in vmmonitor.cfg
         password="-p " + self.run_parameters['password']
         vm_ip = ipname
         if systype == "linux" or systype == "linux2":
@@ -437,6 +441,7 @@ class VMPanel(QtWidgets.QWidget):
             else:
                 connect_py = self.run_parameters['linux_vnc_snapshot_path']
                 username=""
+                # should add vnc_password=xxxx in vmmonitor.cfg
                 password="-p " + self.run_parameters['vnc_password']
         else:
             outdir = "-o " + os.getcwd() + "\\"
@@ -445,6 +450,7 @@ class VMPanel(QtWidgets.QWidget):
             else:
                 connect_py = self.run_parameters['win_vnc_snapshot_path']
                 username=""
+                # should add vnc_password=xxxx in vmmonitor.cfg
                 password="-p " + self.run_parameters['vnc_password']
 
         if len(connect_py) != 0:
@@ -542,6 +548,7 @@ class VMPanel(QtWidgets.QWidget):
             systype=sys.platform
             connect_type = self.run_parameters['remote_desktop_default_type']
             username="-u " + self.run_parameters['username']
+            # should add password=xxxx in vmmonitor.cfg
             password="-p " + self.run_parameters['password']
             if systype == "linux" or systype == "linux2":
                 outdir = "-o " + os.getcwd() + "/"
@@ -550,6 +557,7 @@ class VMPanel(QtWidgets.QWidget):
                 else:
                     connect_py = self.run_parameters['linux_vnc_path']
                     username=""
+                    # should add vnc_password=xxxx in vmmonitor.cfg
                     password="-p " + self.run_parameters['vnc_password']
             else:
                 outdir = "-o " + os.getcwd() + "\\"
@@ -558,6 +566,7 @@ class VMPanel(QtWidgets.QWidget):
                 else:
                     connect_py = self.run_parameters['win_vnc_path']
                     username=""
+                    # should add vnc_password=xxxx in vmmonitor.cfg
                     password="-p " + self.run_parameters['vnc_password']
             if systype == "linux" or systype == "linux2":
                 p = os.popen("python2.7 %s %s %s %s" % (connect_py,username,password,item.text()),"w",1)

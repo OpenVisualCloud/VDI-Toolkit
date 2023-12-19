@@ -365,7 +365,6 @@ def do_test(dirpath):
                 str = ctl_name.get_attribute("Name")
                 sql_text_2 = sql_text_2 + ",\'" + str + "\'"
                 get_value[action_title] = str
-                print(action_title+" ")
                 print(str)
         elif type.childNodes[0].data == "exe":
             exename = action.getElementsByTagName('name')[0]
