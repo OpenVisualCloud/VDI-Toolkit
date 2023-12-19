@@ -42,7 +42,7 @@ echo "Please firstly mannual add "streaming mode='all'" for "graphics spice" ele
 virt-xml ${VM_NAME} --edit --confirm --qemu-commandline 'env=LD_LIBRARY_PATH=/opt/intel/spice/lib:/opt/intel/gst/lib:/opt/intel/gst/lib/gstreamer-1.0:/usr/local/lib:/usr/local/lib64'
 virt-xml ${VM_NAME} --edit --confirm --qemu-commandline 'env=LIBVA_DRIVER_NAME=iHD'
 virt-xml ${VM_NAME} --edit --confirm --qemu-commandline 'env=LIBVA_DRIVERS_PATH=/usr/lib64/dri'
-virt-xml ${VM_NAME} --edit --confirm --qemu-commandline 'env=GST_GL_GBM_DRM_DEVICE=/dev/dri/card'${GPU_CARD}
+virt-xml ${VM_NAME} --edit --confirm --qemu-commandline 'env=GST_VAAPI_DRM_DEVICE=/dev/dri/card'${GPU_CARD}
 virt-xml ${VM_NAME} --edit --confirm --qemu-commandline 'env=GST_GL_GBM_DRM_DEVICE=/dev/dri/card'${GPU_CARD}
 virt-xml ${VM_NAME} --edit --confirm --qemu-commandline 'env=GST_PLUGIN_PATH=/opt/intel/gst/lib/gstreamer-1.0'
 #virt-xml ${VM_NAME} --edit --confirm --qemu-commandline 'env=GST_MESSAGE_DEBUG=all'

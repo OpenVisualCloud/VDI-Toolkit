@@ -108,7 +108,7 @@ Plugin Details:
   Source module            gstreamer-vaapi
   Source release date      2022-06-15
   Binary package           gstreamer-vaapi
-  Origin URL               Unknown package origin
+  Origin URL               https://gitlab.freedesktop.org/gstreamer
 
   vaapiav1dec: VA-API AV1 decoder
   vaapidecodebin: VA-API Decode Bin
@@ -175,18 +175,34 @@ gstreamer-1.20.3 is successfully installed or if the GPU card number is setting 
 This script is used to setup env path for qemu-commandline to enable gstreamer HW stream encoder.
 The name of the VM is needed as param.
 
-**Notes**: Need to uncomment 'cgroup_device_acl' in '/etc/libvirt/qemu.conf' and add GPU device.
+Besides this scripts, some other env setup steps are needed.
 
-The GPU card number shall be modified according to the device and it is 1 in below example.
+**Notes**: Need to set permissions in '/etc/libvirt/qemu.conf'：
+1. Uncomment 'user = "root"'
+
+2. Uncomment 'group = "root"'
+
+3. Uncomment 'cgroup_device_acl' and add GPU device.
+
+    The GPU card number shall be modified according to the device and it is 1 in below example.
 <div align=center><img src="./assets/cgroup_device_acl.PNG"></div>
+
+The modification of ``qemu.conf`` will take effect after running below commands:
+```
+sudo systemctl daemon-reload
+sudo systemctl restart libvirtd
+```
 
 **Notes**: Need to add spice graphics device and qxl video device in VM.
 
 And need to mannually add "streaming mode='all'" for "graphics spice" element as shown below.
+
 ```
-vish edit $VM_NAME
+sudo virsh edit $VM_NAME
 ```
 <div align=center><img src="./assets/StreamingMode.PNG"></div>
+
+If there's a VGPU device, please remove it.
 
 **Notes**: Need to install virtio driver in VM.
 
@@ -218,6 +234,6 @@ sudo ./intel_gpu_top -d drm:/dev/dri/card1
 sudo xpu-smi dump -m 0,2,5,33 -i 3 -d 0
 ```
 
-When a video is playing in one VM, there will be about 0.1% GPU utilization(%) and 0.2% GPU memory Utilization(%) for device Flex170.
+When a video is playing in one VM, there will be GPU utilization and GPU memory Utilization increase.
 
 Besides, uncomment the lines including 'env=GST_MESSAGE_DEBUG=all' and 'GST_DEBUG=5' in the script to print gst debug logs and run again, "vaapijpegenc" related logs can be found in '/var/log/libvirt/qemu/${VM_NAME}.log'.
