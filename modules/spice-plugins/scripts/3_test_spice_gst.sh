@@ -1,3 +1,5 @@
+#!/bin/bash
+
 GPU_CARD=0 #if there is an iGPU, input param --gpu_card=1 to modify it
 usage(){
 cat << EOF
@@ -28,13 +30,13 @@ do
     esac
 done
 
-SPICE_PATH=`pwd`/src/spice/
+SPICE_PATH=$(pwd)/src/spice/
 TEST_PATH=${SPICE_PATH}/server/tests
 if [[ ! -d ${TEST_PATH} ]];then
     echo "please compile and install spice first!"
     exit 1
 fi
-cd ${TEST_PATH}
+cd "${TEST_PATH}" || exit
 export LD_LIBRARY_PATH=/opt/intel/gst/lib:/opt/intel/gst/lib/gstreamer-1.0:/usr/local/lib:/usr/local/lib64
 export LIBVA_DRIVERS_PATH=/usr/lib64/dri
 export LIBVA_DRIVER_NAME=iHD

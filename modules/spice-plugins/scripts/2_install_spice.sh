@@ -1,3 +1,5 @@
+#!/bin/bash
+
 usage(){
 cat << EOF
 Usage: 2_install_spice.sh
@@ -22,12 +24,12 @@ do
     esac
 done
 
-SRC_PATH=`pwd`/src
+SRC_PATH=$(pwd)/src
 if [[ ! -d ${SRC_PATH} ]];then
-    mkdir -p ${SRC_PATH}
+    mkdir -p "${SRC_PATH}"
 fi
-SPICE_SERVER_PATCH_PATH=`pwd`/../patches/spice/
-SPICE_PROTOCOL_PATCH_PATH=`pwd`/../patches/spice-protocol
+SPICE_SERVER_PATCH_PATH=$(pwd)/../patches/spice/
+SPICE_PROTOCOL_PATCH_PATH=$(pwd)/../patches/spice-protocol
 
 export LD_LIBRARY_PATH=/opt/intel/gst/lib:/opt/intel/gst/lib/gstreamer-1.0:${LD_LIBRARY_PATH}
 export PKG_CONFIG_PATH=/opt/intel/gst/lib/pkgconfig:${PKG_CONFIG_PATH}
@@ -37,14 +39,14 @@ git config --local user.name "no name"
 
 # build spice-protocal
 SPICE_PROTOCOL_REPO=https://gitlab.freedesktop.org/spice/spice-protocol.git
-cd ${SRC_PATH}
-if [[ -d `pwd`/spice-protocol ]];then
+cd "${SRC_PATH}" || exit
+if [[ -d $(pwd)/spice-protocol ]];then
     rm -rf spice-protocol
 fi
 git clone ${SPICE_PROTOCOL_REPO}
-cd spice-protocol
+cd spice-protocol || exit
 git checkout v0.14.0 -b dev_v0.14.0
-git am ${SPICE_PROTOCOL_PATCH_PATH}/*.patch
+git am "${SPICE_PROTOCOL_PATCH_PATH}"/*.patch
 ./autogen.sh --prefix=/opt/intel/spice && sudo make install
 
 sudo yum install -y pkgconfig glib2-devel opus-devel pixman-devel \
@@ -58,19 +60,19 @@ pip3.7 install pyparsing
 
 # build spice-server
 SPICE_SERVER_REPO=https://gitlab.freedesktop.org/spice/spice.git
-cd ${SRC_PATH}
-if [[ -d `pwd`/spice ]];then
+cd "${SRC_PATH}" || exit
+if [[ -d $(pwd)/spice ]];then
     rm -rf spice
 fi
 git clone ${SPICE_SERVER_REPO}
-cd spice
+cd spice || exit
 git checkout v0.14.3 -b dev_v0.14.3
-git am ${SPICE_SERVER_PATCH_PATH}//*.patch
+git am "${SPICE_SERVER_PATCH_PATH}"//*.patch
 export C_INCLUDE_PATH=/opt/intel/spice/include/spice-1
-. /opt/rh/devtoolset-7/enable && \
+source /opt/rh/devtoolset-7/enable && \
 SPICE_PROTOCOL_CFLAGS="-I/opt/intel/spice/include/spice-1" \
 SPICE_PROTOCOL_LIBS="/opt/intel/spice/lib" \
 ./autogen.sh --prefix=/opt/intel/spice -localstatedir=/opt/intel/spice/var \
 --sysconfdir=/opt/intel/spice/etc --libdir=/opt/intel/spice/lib
-make -j$(nproc)
+make -j"$(nproc)"
 sudo make install

@@ -1,3 +1,5 @@
+#!/bin/bash
+
 PLATFORM_PATH=/opt/build/10785-data-center-gpu-c7.4-k5.4.19
 usage(){
 cat << EOF
@@ -28,7 +30,7 @@ do
     esac
 done
 
-cd ${PLATFORM_PATH}
+cd "${PLATFORM_PATH}" || exit
 echo -e "\nn\ny\nn\nn\nn\nn\ny\nn" | sudo ./install-sg2.sh
 
 sudo yum install qemu-kvm qemu-img libvirt virt-install libvirt-client virt-manager virt-viewer
