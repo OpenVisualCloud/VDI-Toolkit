@@ -34,9 +34,6 @@ SPICE_PROTOCOL_PATCH_PATH=$(pwd)/../patches/spice-protocol
 export LD_LIBRARY_PATH=/opt/intel/gst/lib:/opt/intel/gst/lib/gstreamer-1.0:${LD_LIBRARY_PATH}
 export PKG_CONFIG_PATH=/opt/intel/gst/lib/pkgconfig:${PKG_CONFIG_PATH}
 
-git config --local user.email "noname@example.com"
-git config --local user.name "no name"
-
 # build spice-protocal
 SPICE_PROTOCOL_REPO=https://gitlab.freedesktop.org/spice/spice-protocol.git
 cd "${SRC_PATH}" || exit
@@ -66,6 +63,8 @@ if [[ -d $(pwd)/spice ]];then
 fi
 git clone ${SPICE_SERVER_REPO}
 cd spice || exit
+git config --local user.email "noname@example.com"
+git config --local user.name "no name"
 git checkout v0.14.3 -b dev_v0.14.3
 git am "${SPICE_SERVER_PATCH_PATH}"//*.patch
 export C_INCLUDE_PATH=/opt/intel/spice/include/spice-1
