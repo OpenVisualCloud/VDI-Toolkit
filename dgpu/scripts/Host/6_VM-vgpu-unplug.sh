@@ -8,18 +8,15 @@ vmName=$1
 deviceXML=$2
 vmXMLName=$vmName.xml
 
-virsh dumpxml $vmName > $vmXMLName
-devLine=$(grep -n hostdev $vmXMLName | grep -oe "[0-9]\{1,3\}\:")
-devARR=(${devLine// / })
+virsh dumpxml "$vmName" > "$vmXMLName"
+devLine=$(grep -n hostdev "$vmXMLName" | grep -oe "[0-9]\{1,3\}\:")
+devARR=("${devLine// / }")
 targetLine=${devARR[0]}
 beginLine=${targetLine:0:3}
-endLine=`expr $beginLine + 7`
-cutChar=($beginLine,"$endLine"p)
+endLine=$(expr "$beginLine" + 7)
 
-echo $cutChar
-
-sed -n $cutChar $vmXMLName > $deviceXML
+sed -n "$beginLine","$endLine"p "$vmXMLName" > "$deviceXML"
 #echo "</hostdev>" >> $deviceXML
 
-virsh detach-device $vmName $deviceXML 
+virsh detach-device "$vmName" "$deviceXML"
 
