@@ -185,7 +185,7 @@ function gpu_data(){
 
     card=0
     pci=0
-    < "$HOST_CONFIG_PATH"/PCI.txt
+    true < "$HOST_CONFIG_PATH"/PCI.txt
     while IFS= read -r i;
     do
         if [[ ${pci} = "${i}" ]]
