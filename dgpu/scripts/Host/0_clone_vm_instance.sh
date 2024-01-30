@@ -24,9 +24,9 @@ do
 	result=$(echo "$vmid" |grep win2k19-"$i")
 	if [ "$result" == "" ]; then
 	   virt-clone -o win2k19 -n win2k19-"$i" -f "$qcow_dir"/win2k19-"$i".qcow2
-	   echo VM "$i" done
+	   echo "VM $i done"
 	else
-		echo VM "$i" instance exists.
+		echo "VM $i instance exists."
 	fi
-	echo VM "$i" done
+	echo "VM $i done"
 done

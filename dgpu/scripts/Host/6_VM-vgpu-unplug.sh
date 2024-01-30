@@ -13,7 +13,7 @@ devLine=$(grep -n hostdev "$vmXMLName" | grep -oe "[0-9]\{1,3\}\:")
 devARR=("${devLine// / }")
 targetLine=${devARR[0]}
 beginLine=${targetLine:0:3}
-endLine=$(expr "$beginLine" + 7)
+endLine=$((beginLine + 7))
 
 sed -n "$beginLine","$endLine"p "$vmXMLName" > "$deviceXML"
 #echo "</hostdev>" >> $deviceXML
