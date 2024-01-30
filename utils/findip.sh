@@ -30,6 +30,7 @@ then
     min_seg=0
     max_seg=1
 else
+    # shellcheck disable=SC2020
     segment=$(ifconfig br0 | grep inet | grep -v inet6|awk '{print $2}'|tr -d "addr:"|awk -F. '{print $1 "." $2 "." $3}')
     min_seg=-1
     max_seg=1
