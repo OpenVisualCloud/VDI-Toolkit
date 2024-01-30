@@ -185,7 +185,8 @@ function gpu_data(){
 
     card=0
     pci=0
-    for i in $(cat "$HOST_CONFIG_PATH"/PCI.txt | grep -v '^ *#')
+    < "$HOST_CONFIG_PATH"/PCI.txt
+    while IFS= read -r i;
     do
         if [[ ${pci} = "${i}" ]]
         then
@@ -194,17 +195,17 @@ function gpu_data(){
             pci=${i}
             echo "new pci ${pci}"
         fi
-        cat /sys/kernel/debug/dri/"$GPU_CARD"/i915_error_state > "${LOGPATH}"/host/i915_error_state_$card.log
-        cat /sys/kernel/debug/dri/"$GPU_CARD"/i915_gem_objects > "${LOGPATH}"/host/i915_gem_objects_$card.log
-        cat /sys/kernel/debug/dri/"$GPU_CARD"/i915_engine_info > "${LOGPATH}"/host/i915_engine_info_$card.log
-        abs=$(128+card)
+        cat /sys/kernel/debug/dri/"$GPU_CARD"/i915_error_state > "${LOGPATH}"/host/i915_error_state_"$card".log
+        cat /sys/kernel/debug/dri/"$GPU_CARD"/i915_gem_objects > "${LOGPATH}"/host/i915_gem_objects_"$card".log
+        cat /sys/kernel/debug/dri/"$GPU_CARD"/i915_engine_info > "${LOGPATH}"/host/i915_engine_info_"$card".log
+        abs=$((card+128))
         if [[ $TESTSUITE != "dumpinfo" ]]
         then
             sudo ./intel_gpu_top drm:/dev/dri/renderD"$abs" -o "${LOGPATH}"/host/GPUTOP-renderD"$abs".json -J &
         fi
         card=$((card+1))
         GPU_CARD=$((GPU_CARD+1))
-    done
+    done < "$HOST_CONFIG_PATH"/PCI.txt
     pkill -kill intel_gpu_top
 
     xpum_data
