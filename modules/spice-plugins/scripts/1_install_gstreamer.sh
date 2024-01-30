@@ -72,7 +72,8 @@ sudo yum -y install openssl-devel bzip2-devel libffi-devel xz-devel
 cd "${SRC_PATH}" || exit
 wget https://www.python.org/ftp/python/3.7.9/Python-3.7.9.tgz
 tar xvf Python-3.7.9.tgz
-cd Python-3.7*/
+cd Python-3.7*/ || exit
+#shellcheck disable=SC1091
 source /opt/rh/devtoolset-9/enable
 ./configure --enable-optimizations --enable-shared
 sudo make install
@@ -84,6 +85,8 @@ if [[ -L "/usr/bin/pip3" ]];then
     sudo rm -rf /usr/bin/pip3
 fi
 sudo ln -s /usr/local/bin/pip3 /usr/bin/pip3
+pip3 install ninja
+#shellcheck disable=SC1091
 source /opt/rh/devtoolset-7/enable
 
 # Build gstreamer
@@ -139,17 +142,18 @@ sudo make install
 sudo make install DESTDIR=/opt/intel/gst
 
 # build gst-core
+GSTCORE_REPO=https://gitlab.freedesktop.org/gstreamer/gstreamer.git
+cd "${SRC_PATH}" || exit
 if [[ -d $(pwd)/gstreamer ]];then
     rm -rf gstreamer
 fi
-GSTCORE_REPO=https://gitlab.freedesktop.org/gstreamer/gstreamer.git
-cd "${SRC_PATH}" || exit
 git clone ${GSTCORE_REPO}
 cd gstreamer || exit
 git config --local user.email "noname@example.com"
 git config --local user.name "no name"
 git checkout 1.20.3 -b dev_1.20.3
 git am "${PATCH_PATH}"/*.patch
+#shellcheck disable=SC1091
 source /opt/rh/devtoolset-9/enable && \
 meson build \
 --libdir=/opt/intel/gst/lib --libexecdir=/opt/intel/gst/lib \

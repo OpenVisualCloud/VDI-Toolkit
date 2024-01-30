@@ -31,7 +31,7 @@ fi
 SPICE_SERVER_PATCH_PATH=$(pwd)/../patches/spice/
 SPICE_PROTOCOL_PATCH_PATH=$(pwd)/../patches/spice-protocol
 
-export LD_LIBRARY_PATH=/opt/intel/gst/lib:/opt/intel/gst/lib/gstreamer-1.0:${LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH=/opt/intel/gst/lib:/opt/intel/gst/lib/gstreamer-1.0:/usr/local/lib:${LD_LIBRARY_PATH}
 export PKG_CONFIG_PATH=/opt/intel/gst/lib/pkgconfig:${PKG_CONFIG_PATH}
 
 # build spice-protocal
@@ -68,6 +68,7 @@ git config --local user.name "no name"
 git checkout v0.14.3 -b dev_v0.14.3
 git am "${SPICE_SERVER_PATCH_PATH}"//*.patch
 export C_INCLUDE_PATH=/opt/intel/spice/include/spice-1
+#shellcheck disable=SC1091
 source /opt/rh/devtoolset-7/enable && \
 SPICE_PROTOCOL_CFLAGS="-I/opt/intel/spice/include/spice-1" \
 SPICE_PROTOCOL_LIBS="/opt/intel/spice/lib" \

@@ -57,7 +57,6 @@ if [[ ${install_dependency} = 1 ]]; then
     sudo yum install -y tree
 fi
 
-CURRENT_DATE=$(date +%y%m%d_%H%M)
 LINUX_DISTRO=$(lsb_release -si)
 
 function check_cputype_dumpinfo() {
@@ -83,13 +82,13 @@ function sys_state(){
     #top -b -n 5: test 5 times
     free -m -c 5                      > "${LOGPATH}"/host/free.log
     #free -m -c 5: test 5 times, unit M
-    sudo ps aux --sort=-rss              > "${LOGPATH}"/host/ps_aux.log
+    ps aux --sort=-rss | sudo tee "${LOGPATH}"/host/ps_aux.log > /dev/null
     #ps aux --sort=-rss: sorting down processes by memory usage
-    sudo journalctl -b 0                    > "${LOGPATH}"/host/journalctl.log
+    journalctl -b 0 | sudo tee "${LOGPATH}"/host/journalctl.log > /dev/null
     #journalctl -b 0: query the journel since current boot
-    sudo dmesg -T                            > "${LOGPATH}"/host/dmesg.log
+    sudo dmesg -T | sudo tee "${LOGPATH}"/host/dmesg.log > /dev/null
     #dmesg -T: dmesg with human readable timestamp
-    sudo cpupower monitor -m Mperf -i 5  > "${LOGPATH}"/host/CPU_pwmon.log
+    sudo cpupower monitor -m Mperf -i 5 | sudo tee "${LOGPATH}"/host/CPU_pwmon.log > /dev/null
     #cpupower monitor -m Mperf -i 5: monitor avg cpupower with 5s time interval
 }
 
@@ -100,12 +99,12 @@ function sys_data() {
     # cpu_type
     echo $c_type > "$HOST_CONFIG_PATH"/cpu_type
     # slabinfo
-    sudo cat /proc/slabinfo > "$HOST_CONFIG_PATH"/slabinfo.txt
+    sudo cat /proc/slabinfo | sudo tee "$HOST_CONFIG_PATH"/slabinfo.txt > /dev/null
     # GPU address map
     lspci -t > "$HOST_CONFIG_PATH"/lspci-t.txt
     for i in $(lspci | grep -iE "vga|display" | grep "Intel Corporation Device" | awk '{print $1}')
     do
-        lspci -s $i -vvv >> "$HOST_CONFIG_PATH"/lspci_card_info.txt
+        lspci -s "$i" -vvv >> "$HOST_CONFIG_PATH"/lspci_card_info.txt
     done
     tree /sys/dev/char |grep drm > "$HOST_CONFIG_PATH"/GPU-device-map.txt
     lspci | grep -iE "vga|display" | grep "Intel Corporation Device" | cut -d ":" -f 1 > "$HOST_CONFIG_PATH"/PCI.txt
@@ -114,7 +113,7 @@ function sys_data() {
     # # GPU numa info
     for j in $(lspci | grep 56c0 | awk '{print $1}')
     do
-        lspci -s $j -vvv >> "$HOST_CONFIG_PATH"/numa_info.txt
+        lspci -s "$j" -vvv >> "$HOST_CONFIG_PATH"/numa_info.txt
     done
     # check i915 driver
     if [[ ${LINUX_DISTRO} == "CentOS" ]]
@@ -186,7 +185,7 @@ function gpu_data(){
 
     card=0
     pci=0
-    for i in $(cat "$HOST_CONFIG_PATH"/PCI.txt);
+    for i in $(cat "$HOST_CONFIG_PATH"/PCI.txt | grep -v '^ *#')
     do
         if [[ ${pci} = "${i}" ]]
         then
@@ -201,7 +200,7 @@ function gpu_data(){
         abs=$(128+card)
         if [[ $TESTSUITE != "dumpinfo" ]]
         then
-            sudo ./intel_gpu_top drm:/dev/dri/renderD$abs -o "${LOGPATH}"/host/GPUTOP-renderD$abs.json -J &
+            sudo ./intel_gpu_top drm:/dev/dri/renderD"$abs" -o "${LOGPATH}"/host/GPUTOP-renderD"$abs".json -J &
         fi
         card=$((card+1))
         GPU_CARD=$((GPU_CARD+1))
