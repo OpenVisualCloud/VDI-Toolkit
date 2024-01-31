@@ -185,8 +185,9 @@ function gpu_data(){
 
     card=0
     pci=0
-    true < "$HOST_CONFIG_PATH"/PCI.txt
-    while IFS= read -r i;
+
+    #shellcheck disable=SC2013
+    for i in $(cat "$HOST_CONFIG_PATH"/PCI.txt);
     do
         if [[ ${pci} = "${i}" ]]
         then
@@ -205,7 +206,7 @@ function gpu_data(){
         fi
         card=$((card+1))
         GPU_CARD=$((GPU_CARD+1))
-    done < "$HOST_CONFIG_PATH"/PCI.txt
+    done
     pkill -kill intel_gpu_top
 
     xpum_data
