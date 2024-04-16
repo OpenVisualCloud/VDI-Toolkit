@@ -237,3 +237,8 @@ sudo xpu-smi dump -m 0,2,5,33 -i 3 -d 0
 When a video is playing in one VM, there will be GPU utilization and GPU memory Utilization increase.
 
 Besides, uncomment the lines including 'env=GST_MESSAGE_DEBUG=all' and 'GST_DEBUG=5' in the script to print gst debug logs and run again, "vaapijpegenc" related logs can be found in '/var/log/libvirt/qemu/${VM_NAME}.log'.
+
+## License
+Spice-plugins module is licensed under MIT license. Note that MIT license is only the license for Intel VDI Tool Kit itself, independent of its third-party dependencies, which are separately licensed.
+
+One of the dependecies GStreamer is an open source framework licensed under LGPL. See https://gstreamer.freedesktop.org/documentation/frequently-asked-questions/licensing.html. You are solely responsible for determining if your use of GStreamer requires any additional licenses. Intel is not responsible for obtaining any such licenses, nor liable for any licensing fees due, in connection with your use of GStreamer.

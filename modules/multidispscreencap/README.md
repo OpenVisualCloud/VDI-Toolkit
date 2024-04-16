@@ -69,3 +69,8 @@ start_rtsp_server.bat
 ffplay_streams.bat 2 0 127.0.0.1 8554
 # 5 For encode file dump mode, after step #3 is finished, "%encode-dump-path%*.mp4" can be found in "bin" folder.
 ```
+
+## License
+MultiDisplayScreenCapture module is licensed under MIT license. Note that MIT license is only the license for Intel VDI Tool Kit itself, independent of its third-party dependencies, which are separately licensed.
+
+One of the dependecies FFmpeg is an open source project licensed under LGPL and GPL. See https://www.ffmpeg.org/legal.html. You are solely responsible for determining if your use of FFmpeg requires any additional licenses. Intel is not responsible for obtaining any such licenses, nor liable for any licensing fees due, in connection with your use of FFmpeg.
