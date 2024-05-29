@@ -17,8 +17,8 @@ echo VS path is %VS2022INSTALLDIR%
 set PATH=%PATH%;%VS2022INSTALLDIR%\Msbuild\Current\bin
 
 echo.
-echo WinRAR path is %WinRARPath%
-set PATH=%PATH%;%WinRARPath%
+echo 7z path is %Path7z%
+set PATH=%PATH%;%Path7z%
 
 echo Fetching deps...
 echo.
@@ -36,11 +36,11 @@ echo json include path is %jsonincludepath%
 
 echo.
 echo Fetching ffmpeg-6.1.1-full_build-shared ...
-set ffmpegurl=https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full-shared.7z
+set ffmpegurl=https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-6.1.1-full_build-shared.7z
 set ffmpegpath=%depsPath%\ffmpeg-6.1.1-full_build-shared
 set ffmpegoutput=%depsPath%\ffmpeg-6.1.1-full_build-shared.7z
 powershell.exe -c "Invoke-WebRequest -Uri %ffmpegurl% -OutFile %ffmpegoutput%"
-WinRAR.exe x %ffmpegoutput% *.* %depsPath%
+7z.exe x %ffmpegoutput% *.* %depsPath%
 set ffmpegincludepath=%ffmpegpath%\include
 set ffmpegdllpath=%ffmpegpath%\bin
 set ffmpeglibpath=%ffmpegpath%\lib
@@ -88,7 +88,7 @@ set mediaMTXoutput=bin\mediamtx_v1.6.0_windows_amd64.zip
 set mediaMTXpath=bin\mediamtx_v1.6.0_windows_amd64
 powershell.exe -c "Invoke-WebRequest -Uri %mediaMTXurl% -OutFile %mediaMTXoutput%"
 mkdir %mediaMTXpath%
-WinRAR.exe x %mediaMTXoutput% *.* %mediaMTXpath%
+7z.exe x %mediaMTXoutput% *.* %mediaMTXpath%
 rd /s /q x64
 rd /s /q %MDSCLibProjectPath%\x64
 rd /s /q %MDSCSampleProjectPath%\x64

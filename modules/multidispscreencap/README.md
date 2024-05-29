@@ -60,7 +60,7 @@ cd bin
 start_rtsp_server.bat
 #3. Run ``MDSCSample.exe`` to start capture and encode. Finish it with "Ctrl+C" input.
 MDSCSample.exe
-#4 For stream mode, run ``start_rtsp_server.bat`` to start rtsp client(ffplay), and %clients_num%, %clients_st_id%, %rtsp-server-ip%, "rtsp-server-port" params can be edited according to the usage and the ffplay window size can be edited in ffplay_streams.bat
+#4 For stream mode, run ``start_rtsp_client.bat`` to start rtsp client(ffplay), and %clients_num%, %clients_st_id%, %rtsp-server-ip%, "rtsp-server-port" params can be edited according to the usage and the ffplay window size can be edited in ffplay_streams.bat
 # e.g. start 2 rtsp clients with url of
 # rtsp://127.0.0.1:8554/screencap0 and
 # rtsp://127.0.0.1:8554/screencap1
