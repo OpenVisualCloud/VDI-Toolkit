@@ -70,7 +70,12 @@ unbind_vfio()
   echo 0 > /sys/class/drm/card"$card_id"/device/sriov_drivers_autoprobe
   modprobe vfio_pci
   echo 1 > /sys/class/drm/card"$card_id"/device/sriov_drivers_autoprobe
-  echo 8086 56c0 > /sys/bus/pci/drivers/vfio-pci/new_id
+
+  PCI_ID=$(grep -i PCI_ID /sys/class/drm/card"$card_id"/device/uevent)
+  PREFIX="PCI_ID=8086:"
+  DEV_ID=${PCI_ID#"$PREFIX"}
+  dev_id=${DEV_ID,,}
+  echo 8086 $dev_id > /sys/bus/pci/drivers/vfio-pci/new_id
 
   # unbind vfio driver
   bus_id=$(udevadm info -q property /dev/dri/card"$card_id" |grep ID_PATH= |cut -d ':' -f 2)
@@ -79,10 +84,10 @@ unbind_vfio()
   for i in ${PCI_BDF}
   do
     #echo 0000:$i > /sys/bus/pci/drivers/pcibak/unbind
-    echo 0000:"$i" > /sys/bus/pci/drivers/intel_vsec/unbind
+    echo 0000:"$i" > /sys/bus/pci/drivers/intel_vsec/unbind > /dev/null
   done
 
-  echo 8086 56c0 > /sys/bus/pci/drivers/vfio-pci/new_id
+  echo 8086 $dev_id > /sys/bus/pci/drivers/vfio-pci/new_id
   echo "$vf_count VFs created."
   ls /dev/vfio/
 }
