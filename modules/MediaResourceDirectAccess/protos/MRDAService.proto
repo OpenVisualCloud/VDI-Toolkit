@@ -1,0 +1,104 @@
+/*
+ * Copyright (c) 2024, Intel Corporation
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+
+ */
+
+syntax = "proto3";
+
+package MRDA;
+
+// MRDACodec Interface exported by the server
+service MRDAService
+{
+    rpc SetInitParams(MediaParams) returns (TaskStatus) {}
+
+    rpc SendInputData(BufferInfo) returns (TaskStatus) {}
+
+    rpc ReceiveOutputData(Pts) returns (BufferInfo) {}
+}
+
+message Pts
+{
+    int64 pts = 1;
+}
+
+message BufferInfo
+{
+    MemBuffer buffer = 1;
+    int32 width = 2;
+    int32 height = 3;
+    int32 type = 4;
+    int64 pts = 5;
+    bool  isEOS = 6;
+}
+
+message MemBuffer
+{
+    int32 buf_id = 1;
+    int64 state_offset = 2;
+    int64 mem_offset = 3;
+    int64 buf_size = 4;
+    int64 occupied_buf_size = 5;
+    int32 state = 6;
+}
+
+message TaskStatus
+{
+    int32 status = 1;
+}
+
+message EncodeParams
+{
+    uint32 codec_id = 1;
+    uint32 gop_size = 2;
+    uint32 async_depth = 3;
+    uint32 target_usage = 4;
+    uint32 rc_mode = 5;
+    uint32 qp = 6;
+    uint32 bit_rate = 7;
+    int32  framerate_num = 8;
+    int32  framerate_den = 9;
+    uint32 frame_width = 10;
+    uint32 frame_height = 11;
+    uint32 color_format = 12;
+    uint32 codec_profile = 13;
+    uint32 gop_ref_dist = 14;
+    uint32 num_ref_frame = 15;
+}
+
+message ShareMemoryInfo
+{
+    uint64 total_memory_size = 1;
+    uint32 buffer_num = 2;
+    uint64 buffer_size = 3;
+    string in_mem_dev_path = 4;
+    string out_mem_dev_path = 5;
+}
+
+message MediaParams
+{
+    ShareMemoryInfo share_memory_info = 1;
+    EncodeParams enc_params = 2;
+}
