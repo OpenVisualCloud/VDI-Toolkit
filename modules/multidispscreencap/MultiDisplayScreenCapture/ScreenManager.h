@@ -26,36 +26,48 @@
  *
  */
 
-#ifndef _DUPLICATIONMANAGER_H_
-#define _DUPLICATIONMANAGER_H_
+#ifndef _SCREENMANAGER_H_
+#define _SCREENMANAGER_H_
 
-#include "CommonTypes.h"
+#include <stdio.h>
 
-//
-// Handles the task of duplicating an output.
-//
-class DUPLICATIONMANAGER
+#include "MDSCTypes.h"
+#include "warning.h"
+#include "BufferQueue.h"
+
+class MDSCLIB_API ScreenManager
 {
     public:
-        DUPLICATIONMANAGER();
-        ~DUPLICATIONMANAGER();
-        _Success_(*Timeout == false && return == DUPL_RETURN_SUCCESS) DUPL_RETURN GetFrame(_Out_ FRAME_DATA* Data, _Out_ bool* Timeout);
-        DUPL_RETURN DoneWithFrame();
-        DUPL_RETURN InitDupl(_In_ ID3D11Device* Device, _In_ ID3D11DeviceContext* Context, UINT Output);
-        DUPL_RETURN GetMouse(_Inout_ PTR_INFO* PtrInfo, _In_ DXGI_OUTDUPL_FRAME_INFO* FrameInfo, INT OffsetX, INT OffsetY);
-        void GetOutputDesc(_Out_ DXGI_OUTPUT_DESC* DescPtr);
+        ScreenManager();
+        ~ScreenManager();
+        void Clean();
+        SCREENCAP_STATUS Initialize();
+        SCREENCAP_STATUS SetSingleOuput(bool SingleOutput = false , UINT SingleOutNumber = 0);
+        SCREENCAP_STATUS Process(HANDLE TerminateThreadsEvent);
+        void WaitForThreadTermination();
+        UINT GetOutputCount();
+        UINT GetScreenCount();
+        BufferQueue* GetBufferQueues();
+        DX_RESOURCES* GetDXResource(UINT DisplayNumber);
+        SCREENCAP_STATUS SetCaptureFps(UINT fps);
+        UINT GetCaptureFps();
+        bool IsCaptureTerminated();
 
     private:
+        SCREENCAP_STATUS InitializeDx(_Out_ DX_RESOURCES* Data);
+        SCREENCAP_STATUS GetAdapterCount(_In_ ID3D11Device* Device);
+        void CleanDx(_Inout_ DX_RESOURCES* Data);
 
-    // vars
-        IDXGIOutputDuplication* m_DeskDupl;
-        ID3D11Texture2D* m_AcquiredDesktopImage;
-        _Field_size_bytes_(m_MetaDataSize) BYTE* m_MetaDataBuffer;
-        UINT m_MetaDataSize;
-        UINT m_OutputNumber;
-        DXGI_OUTPUT_DESC m_OutputDesc;
-        ID3D11Device* m_Device;
-        ID3D11DeviceContext* m_Context;
+
+        bool m_bSingleOutput;
+        INT m_bSingleOutNumber;
+        UINT m_uOutputCount;
+        UINT m_uScreenCount;
+        _Field_size_(m_uScreenCount) HANDLE* m_pScreenHandles;
+        _Field_size_(m_uScreenCount) ThreadInputParams* m_pScreenInputParams;
+        _Field_size_(m_uScreenCount) BufferQueue* m_pBufferQueues;
+
+        UINT m_CaptureFps;
 };
 
 #endif

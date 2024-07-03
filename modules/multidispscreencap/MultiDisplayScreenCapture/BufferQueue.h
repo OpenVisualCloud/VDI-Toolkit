@@ -29,8 +29,7 @@
 #ifndef _BUFFERQUEUE_H_
 #define _BUFFERQUEUE_H_
 
-#include "CommonTypes.h"
-#include "framework.h"
+#include "MDSCTypes.h"
 
 #include <queue>
 #include <mutex>
@@ -38,19 +37,20 @@
 class BufferQueue {
 public:
     MDSCLIB_API BufferQueue();
-    MDSCLIB_API ~BufferQueue() = default;
-    MDSCLIB_API bool EnqueueBuffer(FRAME_DATA frame_data);
-    MDSCLIB_API FRAME_DATA DequeueBuffer();
-    MDSCLIB_API FRAME_DATA AcquireBuffer();
-    MDSCLIB_API int GetSize() { return m_Size; }
-    MDSCLIB_API int GetMaxSize() { return m_maxSize; }
+    MDSCLIB_API ~BufferQueue();
+    MDSCLIB_API bool EnqueueBuffer(CapturedData Data);
+    MDSCLIB_API CapturedData DequeueBuffer();
+    MDSCLIB_API CapturedData AcquireBuffer();
+    MDSCLIB_API int GetSize() { return m_nSize; }
+    MDSCLIB_API int GetMaxSize() { return m_mMaxSize; }
     MDSCLIB_API bool SetMaxSize(int psize);
+    MDSCLIB_API bool CleanBuffer();
 
 private:
-    int m_Size;
-    int m_maxSize;
-    std::queue<FRAME_DATA> m_SourceQueue;
-    std::mutex queue_mutex_;
+    int m_nSize;
+    int m_mMaxSize;
+    std::queue<CapturedData> m_qSourceQueue;
+    std::mutex m_mQueueMutex;
 };
 
 #endif

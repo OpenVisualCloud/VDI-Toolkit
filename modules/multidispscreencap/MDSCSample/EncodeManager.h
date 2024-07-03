@@ -98,17 +98,17 @@ private:
     int  Init_swrContext();
     int  BGRA2YUV(uint8_t* bgra_img, int width, int height);
 
-    AVCodecContext* m_codec_ctx;
-    SwsContext* m_sws_ctx;
-    AVFormatContext* m_video_ofmt_ctx;
-    AVStream* m_video_stream;
-    std::string m_output_filename;
-    std::string m_rtsp_url;
-    AVFrame* m_frame;
-    AVPacket* m_pkt;
-    uint64_t m_pts;
-    bool m_isRtsp;
-    uint32_t m_threadId;
+    AVCodecContext* m_pCodecCtx;
+    SwsContext* m_pSwsCtx;
+    AVFormatContext* m_pVideoOfmtCtx;
+    AVStream* m_pVideoStream;
+    std::string m_sOutputFilename;
+    std::string m_sRtspUrl;
+    AVFrame* m_pFrame;
+    AVPacket* m_pPkt;
+    uint64_t m_ulPts;
+    bool m_bIsRtsp;
+    uint32_t m_uThreadId;
 };
 
 #endif

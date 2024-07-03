@@ -29,8 +29,8 @@
 #ifndef _MULTIDISPLAYSCREENCAPTURE_H_
 #define _MULTIDISPLAYSCREENCAPTURE_H_
 
-#include "framework.h"
-#include "ThreadManager.h"
+#include "MDSCTypes.h"
+#include "ScreenManager.h"
 
 
 class MDSCLIB_API MultiDisplayScreenCapture {
@@ -38,24 +38,23 @@ public:
 	MultiDisplayScreenCapture();
 	~MultiDisplayScreenCapture();
 public:
-	DUPL_RETURN Init();
-	DUPL_RETURN SetSingleDisplay(int SingleDispNumber);
+	SCREENCAP_STATUS Init();
+	SCREENCAP_STATUS SetSingleDisplay(int SingleDispNumber);
 	UINT GetDisplayCount();
 	UINT GetOutputCount();
 	BufferQueue *GetBufferQueues();
-	DUPL_RETURN StartCaptureScreen();
-	DUPL_RETURN TerminateCaptureScreen();
-	DUPL_RETURN DeInit();
-	DX_RESOURCES *GetDXResource(int thread);
-	DUPL_RETURN SetCaptureFps(UINT fps);
+	SCREENCAP_STATUS StartCaptureScreen();
+	SCREENCAP_STATUS TerminateCaptureScreen();
+	SCREENCAP_STATUS DeInit();
+	DX_RESOURCES *GetDXResource(UINT DisplayNumber);
+	SCREENCAP_STATUS SetCaptureFps(UINT fps);
 	UINT GetCaptureFps();
+    bool CheckIfCaptureTerminated();
 
 private:
-	THREADMANAGER m_ThreadMgr;
+	ScreenManager m_cScreenMgr;
 
-	HANDLE m_UnexpectedErrorEvent;
-	HANDLE m_ExpectedErrorEvent;
-	HANDLE m_TerminateThreadsEvent;
+	HANDLE m_hTerminateCaptureEvent;
 };
 
 #endif

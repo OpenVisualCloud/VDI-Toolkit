@@ -29,12 +29,12 @@
 #ifndef _SCREENCAPTURE_H_
 #define _SCREENCAPTURE_H_
 
-#include "DuplicationManager.h"
-#include "ThreadManager.h"
+#include "CaptureManager.h"
+#include "ScreenManager.h"
 
 //
 // Forward Declarations
 //
-DWORD WINAPI DDProc(_In_ void* Param);
+DWORD WINAPI CaptureProc(void* Param);
 
 #endif

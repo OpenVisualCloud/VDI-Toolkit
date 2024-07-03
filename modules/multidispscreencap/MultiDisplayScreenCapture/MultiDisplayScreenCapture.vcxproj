@@ -44,6 +44,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -144,19 +145,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BufferQueue.h" />
-    <ClInclude Include="CommonTypes.h" />
-    <ClInclude Include="DuplicationManager.h" />
-    <ClInclude Include="framework.h" />
+    <ClInclude Include="CaptureManager.h" />
+    <ClInclude Include="MDSCTypes.h" />
     <ClInclude Include="MultiDisplayScreenCapture.h" />
     <ClInclude Include="ScreenCapture.h" />
-    <ClInclude Include="ThreadManager.h" />
+    <ClInclude Include="ScreenManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BufferQueue.cpp" />
-    <ClCompile Include="DuplicationManager.cpp" />
+    <ClCompile Include="CaptureManager.cpp" />
     <ClCompile Include="MultiDisplayScreenCapture.cpp" />
     <ClCompile Include="ScreenCapture.cpp" />
-    <ClCompile Include="ThreadManager.cpp" />
+    <ClCompile Include="ScreenManager.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

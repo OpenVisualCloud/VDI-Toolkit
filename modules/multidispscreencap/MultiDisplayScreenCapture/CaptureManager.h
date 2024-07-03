@@ -26,17 +26,29 @@
  *
  */
 
-#ifndef _FRAMEWORK_H_
-#define _FRAMEWORK_H_
+#ifndef _CAPTUREMANAGER_H_
+#define _CAPTUREMANAGER_H_
 
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
-// Windows Header Files
-#include <windows.h>
+#include "MDSCTypes.h"
+#include "CaptureManager.h"
 
-#ifdef MDSCLIB_EXPORTS
-#define MDSCLIB_API __declspec(dllexport)
-#else
-#define MDSCLIB_API __declspec(dllimport)
-#endif
+class CaptureManager
+{
+    public:
+        CaptureManager();
+        ~CaptureManager();
+        SCREENCAP_STATUS Initialize(ID3D11Device *Device, ID3D11DeviceContext *Context, UINT Output);
+        SCREENCAP_STATUS CaptureScreen(CapturedData *DataCaptured, UINT TimeOutInMs);
+        SCREENCAP_STATUS Release();
+        void GetOutputDesc(DXGI_OUTPUT_DESC* DescPtr);
+
+    private:
+        ID3D11Device *m_pDevice;
+        ID3D11DeviceContext *m_pContext;
+        IDXGIOutputDuplication* m_pDXGIDupl;
+        ID3D11Texture2D* m_pCapturedTexture;
+        UINT m_uScreenNumber;
+        DXGI_OUTPUT_DESC m_sOutputDesc;
+};
 
 #endif

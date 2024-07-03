@@ -27,65 +27,23 @@
  */
 
 #include "ScreenCapture.h"
-#include <iostream>
-
-// Below are lists of errors expect from Dxgi API calls when a transition event like mode change, PnpStop, PnpStart
-// desktop switch, TDR or session disconnect/reconnect. In all these cases we want the application to clean up the threads that process
-// the desktop updates and attempt to recreate them.
-// If we get an error that is not on the appropriate list then we exit the application
-
-// These are the errors we expect from general Dxgi API due to a transition
-HRESULT SystemTransitionsExpectedErrors[] = {
-                                                DXGI_ERROR_DEVICE_REMOVED,
-                                                DXGI_ERROR_ACCESS_LOST,
-                                                static_cast<HRESULT>(WAIT_ABANDONED),
-                                                S_OK                                    // Terminate list with zero valued HRESULT
-};
-
-// These are the errors we expect from IDXGIOutput1::DuplicateOutput due to a transition
-HRESULT CreateDuplicationExpectedErrors[] = {
-                                                DXGI_ERROR_DEVICE_REMOVED,
-                                                static_cast<HRESULT>(E_ACCESSDENIED),
-                                                DXGI_ERROR_UNSUPPORTED,
-                                                DXGI_ERROR_SESSION_DISCONNECTED,
-                                                S_OK                                    // Terminate list with zero valued HRESULT
-};
-
-// These are the errors we expect from IDXGIOutputDuplication methods due to a transition
-HRESULT FrameInfoExpectedErrors[] = {
-                                        DXGI_ERROR_DEVICE_REMOVED,
-                                        DXGI_ERROR_ACCESS_LOST,
-                                        S_OK                                    // Terminate list with zero valued HRESULT
-};
-
-// These are the errors we expect from IDXGIAdapter::EnumOutputs methods due to outputs becoming stale during a transition
-HRESULT EnumOutputsExpectedErrors[] = {
-                                          DXGI_ERROR_NOT_FOUND,
-                                          S_OK                                    // Terminate list with zero valued HRESULT
-};
 
 //
-// Entry point for new duplication threads
+// Entry point for new screen Capture
 //
-DWORD WINAPI DDProc(_In_ void* Param)
+DWORD WINAPI CaptureProc(void* Param)
 {
-    int num = 0;  //////////can remove
+    ThreadInputParams* TData = reinterpret_cast<ThreadInputParams*>(Param);
 
-    // Classes
-    DUPLICATIONMANAGER DuplMgr;
-
-    // Data passed in from thread creation
-    THREAD_DATA* TData = reinterpret_cast<THREAD_DATA*>(Param);
-
-    // BufferQueue
     BufferQueue* PtrBufferQueue = (BufferQueue*)TData->BufferQueueHandle;
 
-    // Get desktop
-    DUPL_RETURN Ret;
+    int CapturedCount = 0;
 
-    // Make duplication manager
-    Ret = DuplMgr.InitDupl(TData->DxRes.Device, TData->DxRes.Context, TData->Output);
-    if (Ret != DUPL_RETURN_SUCCESS)
+    SCREENCAP_STATUS Ret;
+
+    CaptureManager CapMgr;
+    Ret = CapMgr.Initialize(TData->DxRes.Device, TData->DxRes.Context, TData->ScreenNumber);
+    if (Ret != SCREENCAP_SUCCESSED)
     {
         goto Exit;
     }
@@ -93,46 +51,41 @@ DWORD WINAPI DDProc(_In_ void* Param)
     // Get output description
     DXGI_OUTPUT_DESC DesktopDesc;
     RtlZeroMemory(&DesktopDesc, sizeof(DXGI_OUTPUT_DESC));
-    DuplMgr.GetOutputDesc(&DesktopDesc);
+    CapMgr.GetOutputDesc(&DesktopDesc);
 
     // Main duplication loop
     while ((WaitForSingleObjectEx(TData->TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT))
     {
         std::chrono::time_point<std::chrono::high_resolution_clock> starttp = std::chrono::high_resolution_clock::now();
 
-        // Get new frame from desktop duplication
-        bool TimeOut;
-        FRAME_DATA CurrentData;
-        Ret = DuplMgr.GetFrame(&CurrentData, &TimeOut);
-        if (Ret != DUPL_RETURN_SUCCESS)
+        CapturedData Data;
+        Ret = CapMgr.CaptureScreen(&Data, 1000.0/TData->CaptureFps);
+        if (Ret == SCREENCAP_CONTINUED)
         {
-            // An error occurred getting the next frame drop out of loop which
-            break;
-        }
-
-        // Check for timeout
-        if (TimeOut)
-        {
-            // No new frame at the moment
             continue;
         }
 
-        num++;
-
-        // Release frame back to desktop duplication
-        Ret = DuplMgr.DoneWithFrame();
-        if (Ret != DUPL_RETURN_SUCCESS)
+        if (Ret == SCREENCAP_FAILED)
         {
+            printf("[Thread][%d], Error: Screen capture result failure, captured break with totall num %d\n", TData->ScreenNumber, CapturedCount);
             break;
         }
 
-        //enqueue current frame
-        PtrBufferQueue->EnqueueBuffer(CurrentData);
+        CapturedCount++;
+
+        Ret = CapMgr.Release();
+        if (Ret != SCREENCAP_SUCCESSED)
+        {
+            printf("[Thread][%d], Error: Capture manager release failed, frame %d\n", TData->ScreenNumber, CapturedCount);
+            break;
+        }
+
+        PtrBufferQueue->EnqueueBuffer(Data);
 
         std::chrono::time_point<std::chrono::high_resolution_clock> endtp = std::chrono::high_resolution_clock::now();
         uint64_t timecost = std::chrono::duration_cast<std::chrono::microseconds>(endtp - starttp).count();
 
-        //printf("thread %d, enqueue frame %d, CurrentData Frame ptr %p, LastMouseUpdateTime %u, getframe timecost %dus\n", TData->Output, num, CurrentData.Frame, CurrentData.FrameInfo.LastMouseUpdateTime.LowPart, timecost);
+        //printf("thread %d, dequeue frame %d, Data texture ptr %p, AcquiredTime %u, encodeframe costtime %dus\n", TData->ThreadId, num, Data->CapturedTexture, Data->AcquiredTime, timecost);
 
         int CaptureInterval = TData->CaptureFps != 0 ? 1000000 / TData->CaptureFps : 0;
         if (timecost < CaptureInterval)
@@ -142,77 +95,12 @@ DWORD WINAPI DDProc(_In_ void* Param)
     }
 
 Exit:
-    if (Ret != DUPL_RETURN_SUCCESS)
+
+    PtrBufferQueue->CleanBuffer();
+    if (Ret != SCREENCAP_SUCCESSED)
     {
-        if (Ret == DUPL_RETURN_ERROR_EXPECTED)
-        {
-            // The system is in a transition state so request the duplication be restarted
-            SetEvent(TData->ExpectedErrorEvent);
-        }
-        else
-        {
-            // Unexpected error so exit the application
-            SetEvent(TData->UnexpectedErrorEvent);
-        }
+        SetEvent(TData->TerminateThreadsEvent);
     }
 
     return 0;
-}
-
-_Post_satisfies_(return != DUPL_RETURN_SUCCESS)
-DUPL_RETURN ProcessFailure(_In_opt_ ID3D11Device * Device, _In_ LPCWSTR Str, _In_ LPCWSTR Title, HRESULT hr, _In_opt_z_ HRESULT * ExpectedErrors)
-{
-    HRESULT TranslatedHr;
-
-    // On an error check if the DX device is lost
-    if (Device)
-    {
-        HRESULT DeviceRemovedReason = Device->GetDeviceRemovedReason();
-
-        switch (DeviceRemovedReason)
-        {
-        case DXGI_ERROR_DEVICE_REMOVED:
-        case DXGI_ERROR_DEVICE_RESET:
-        case static_cast<HRESULT>(E_OUTOFMEMORY):
-        {
-            // Our device has been stopped due to an external event on the GPU so map them all to
-            // device removed and continue processing the condition
-            TranslatedHr = DXGI_ERROR_DEVICE_REMOVED;
-            break;
-        }
-
-        case S_OK:
-        {
-            // Device is not removed so use original error
-            TranslatedHr = hr;
-            break;
-        }
-
-        default:
-        {
-            // Device is removed but not a error we want to remap
-            TranslatedHr = DeviceRemovedReason;
-        }
-        }
-    }
-    else
-    {
-        TranslatedHr = hr;
-    }
-
-    // Check if this error was expected or not
-    if (ExpectedErrors)
-    {
-        HRESULT* CurrentResult = ExpectedErrors;
-
-        while (*CurrentResult != S_OK)
-        {
-            if (*(CurrentResult++) == TranslatedHr)
-            {
-                return DUPL_RETURN_ERROR_EXPECTED;
-            }
-        }
-    }
-
-    return DUPL_RETURN_ERROR_UNEXPECTED;
 }

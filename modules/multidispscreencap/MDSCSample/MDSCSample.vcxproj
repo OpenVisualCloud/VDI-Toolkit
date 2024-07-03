@@ -44,6 +44,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -71,8 +72,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)\MultiDisplayScreenCapture;$(SolutionDir)\ffmpeg-6.1.1-full_build-shared\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)\ffmpeg-6.1.1-full_build-shared\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <IncludePath>$(SolutionDir)\MultiDisplayScreenCapture;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)\deps\ffmpeg-6.1.1-full_build-shared\include;$(ProjectDir)\deps\nlohmann</IncludePath>
+    <LibraryPath>$(SolutionDir)\ffmpeg-6.1.1-full_build-shared\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(ProjectDir)\deps\ffmpeg-6.1.1-full_build-shared\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>$(SolutionDir)\MultiDisplayScreenCapture;$(ProjectDir)\deps\ffmpeg-6.1.1-full_build-shared\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)\deps\nlohmann</IncludePath>

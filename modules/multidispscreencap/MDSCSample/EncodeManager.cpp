@@ -28,135 +28,135 @@
 
 #include "EncodeManager.h"
 
-EncodeManager::EncodeManager() : m_threadId(0),
-                                 m_pts(0),
-                                 m_isRtsp(false),
-                                 m_rtsp_url(""),
-                                 m_output_filename(""),
-                                 m_pkt(nullptr),
-                                 m_frame(nullptr),
-                                 m_codec_ctx(nullptr),
-                                 m_sws_ctx(nullptr),
-                                 m_video_ofmt_ctx(nullptr),
-                                 m_video_stream(nullptr)
+EncodeManager::EncodeManager() : m_uThreadId(0),
+                                 m_ulPts(0),
+                                 m_bIsRtsp(false),
+                                 m_sRtspUrl(""),
+                                 m_sOutputFilename(""),
+                                 m_pPkt(nullptr),
+                                 m_pFrame(nullptr),
+                                 m_pCodecCtx(nullptr),
+                                 m_pSwsCtx(nullptr),
+                                 m_pVideoOfmtCtx(nullptr),
+                                 m_pVideoStream(nullptr)
 {
 }
 
 int EncodeManager::Init(const Encode_Params& encode_params, std::string output, bool isRtsp)
 {
-    m_threadId = encode_params.thread_count;
-    m_isRtsp = isRtsp;
+    m_uThreadId = encode_params.thread_count;
+    m_bIsRtsp = isRtsp;
 
     if (Open_encode_context(encode_params) != 0)
     {
-        printf("[thread][%d], Could not open encodec packet\n", m_threadId);
+        printf("[thread][%d], Could not open encodec packet\n", m_uThreadId);
         return -1;
     }
 
     if (Init_swrContext() != 0)
     {
-        printf("[thread][%d], Could not init swrContext\n", m_threadId);
+        printf("[thread][%d], Could not init swrContext\n", m_uThreadId);
         return -1;
     }
 
-    if (m_isRtsp)
+    if (m_bIsRtsp)
     {
-        m_rtsp_url = output;
-        m_pts = encode_params.st_timestamp;
+        m_sRtspUrl = output;
+        m_ulPts = encode_params.st_timestamp;
     }
     else
     {
-        m_output_filename = output;
-        m_pts = 0;
+        m_sOutputFilename = output;
+        m_ulPts = 0;
     }
 
     if (Open_video_output() != 0)
     {
-        printf("[thread][%d], Could not open video output\n", m_threadId);
+        printf("[thread][%d], Could not open video output\n", m_uThreadId);
         return -1;
     }
 
-    m_pkt = av_packet_alloc();
-    if (!m_pkt)
+    m_pPkt = av_packet_alloc();
+    if (!m_pPkt)
     {
-        printf("[thread][%d], Could not allocate video packet\n", m_threadId);
+        printf("[thread][%d], Could not allocate video packet\n", m_uThreadId);
         return -1;
     }
 
-    m_frame = av_frame_alloc();
-    if (!m_frame)
+    m_pFrame = av_frame_alloc();
+    if (!m_pFrame)
     {
-        printf("[thread][%d], Could not allocate video frame\n", m_threadId);
+        printf("[thread][%d], Could not allocate video frame\n", m_uThreadId);
         return -1;
     }
-    m_frame->format = AV_PIX_FMT_YUV420P;
-    m_frame->width = encode_params.width;
-    m_frame->height = encode_params.height;
+    m_pFrame->format = AV_PIX_FMT_YUV420P;
+    m_pFrame->width = encode_params.width;
+    m_pFrame->height = encode_params.height;
 
-    if (av_frame_get_buffer(m_frame, 0) < 0)
+    if (av_frame_get_buffer(m_pFrame, 0) < 0)
     {
-        printf("[thread][%d], Could not allocate the video frame data\n", m_threadId);
+        printf("[thread][%d], Could not allocate the video frame data\n", m_uThreadId);
         return - 1;
     }
 
-    printf("[thread][%d], ffmpeg software encoder with encode_params is enabled\n", m_threadId);
+    printf("[thread][%d], ffmpeg software encoder with encode_params is enabled\n", m_uThreadId);
     return 0;
 }
 
 EncodeManager::~EncodeManager()
 {
-    printf("[thread][%d], ~EncodeManager\n", m_threadId);
-    av_frame_free(&m_frame);
-    av_packet_free(&m_pkt);
-    sws_freeContext(m_sws_ctx);
-    if (m_video_ofmt_ctx)
+    printf("[thread][%d], ~EncodeManager\n", m_uThreadId);
+    av_frame_free(&m_pFrame);
+    av_packet_free(&m_pPkt);
+    sws_freeContext(m_pSwsCtx);
+    if (m_pVideoOfmtCtx)
     {
-        if (m_video_ofmt_ctx->pb) {
-            avio_close(m_video_ofmt_ctx->pb);
+        if (m_pVideoOfmtCtx->pb) {
+            avio_close(m_pVideoOfmtCtx->pb);
         }
     }
-    avformat_free_context(m_video_ofmt_ctx);
-    avcodec_free_context(&m_codec_ctx);
+    avformat_free_context(m_pVideoOfmtCtx);
+    avcodec_free_context(&m_pCodecCtx);
 }
 
 int EncodeManager::Encode(uint8_t* data, uint64_t timestamp)
 {
     std::chrono::time_point<std::chrono::high_resolution_clock> starttp = std::chrono::high_resolution_clock::now();
-    BGRA2YUV(data, m_codec_ctx->width, m_codec_ctx->height);
+    BGRA2YUV(data, m_pCodecCtx->width, m_pCodecCtx->height);
     std::chrono::time_point<std::chrono::high_resolution_clock> endtp = std::chrono::high_resolution_clock::now();
     uint64_t timecost = std::chrono::duration_cast<std::chrono::microseconds>(endtp - starttp).count();
 
-    int ret = avcodec_send_frame(m_codec_ctx, m_frame);
+    int ret = avcodec_send_frame(m_pCodecCtx, m_pFrame);
     if (ret < 0)
     {
-        printf("[thread][%d], Error sending a frame for encoding\n", m_threadId);
+        printf("[thread][%d], Error sending a frame for encoding\n", m_uThreadId);
         return -1;
     }
 
-    while (avcodec_receive_packet(m_codec_ctx, m_pkt) >= 0)
+    while (avcodec_receive_packet(m_pCodecCtx, m_pPkt) >= 0)
     {
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
             return false;
         else if (ret < 0)
         {
-            printf("[thread][%d], Error during encoding\n", m_threadId);
+            printf("[thread][%d], Error during encoding\n", m_uThreadId);
             return -1;
         }
 
-        if (m_isRtsp)
+        if (m_bIsRtsp)
         {
-            m_pkt->pts = timestamp - m_pts;
-            m_pkt->dts = m_pkt->pts;
+            m_pPkt->pts = timestamp - m_ulPts;
+            m_pPkt->dts = m_pPkt->pts;
         }
         else
         {
-            m_pkt->pts = av_rescale_q_rnd(m_pkt->pts, m_codec_ctx->time_base, m_video_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-            m_pkt->dts = av_rescale_q_rnd(m_pkt->dts, m_codec_ctx->time_base, m_video_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-            m_pkt->duration = av_rescale_q(m_pkt->duration, m_codec_ctx->time_base, m_video_stream->time_base);
-            m_pts++;
+            m_pPkt->pts = av_rescale_q_rnd(m_pPkt->pts, m_pCodecCtx->time_base, m_pVideoStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+            m_pPkt->dts = av_rescale_q_rnd(m_pPkt->dts, m_pCodecCtx->time_base, m_pVideoStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+            m_pPkt->duration = av_rescale_q(m_pPkt->duration, m_pCodecCtx->time_base, m_pVideoStream->time_base);
+            m_ulPts++;
         }
-        av_interleaved_write_frame(m_video_ofmt_ctx, m_pkt);
-        av_packet_unref(m_pkt);
+        av_interleaved_write_frame(m_pVideoOfmtCtx, m_pPkt);
+        av_packet_unref(m_pPkt);
     }
     return 0;
 }
@@ -166,46 +166,46 @@ int EncodeManager::Open_encode_context(const Encode_Params& encode_params)
     const AVCodec* encodec = avcodec_find_encoder(AV_CODEC_ID_H264);
     if (!encodec)
     {
-        printf("[thread][%d], avcodec_find_encoder AV_CODEC_ID_H264 failed!\n", m_threadId);
+        printf("[thread][%d], avcodec_find_encoder AV_CODEC_ID_H264 failed!\n", m_uThreadId);
         return -1;
     }
 
-    m_codec_ctx = avcodec_alloc_context3(encodec);
-    if (!m_codec_ctx)
+    m_pCodecCtx = avcodec_alloc_context3(encodec);
+    if (!m_pCodecCtx)
     {
-        printf("[thread][%d], avcodec_alloc_context3 failed!!\n", m_threadId);
+        printf("[thread][%d], avcodec_alloc_context3 failed!!\n", m_uThreadId);
         return -1;
     }
 
-    m_codec_ctx->bit_rate = encode_params.bitrate;
-    m_codec_ctx->width = encode_params.width;
-    m_codec_ctx->height = encode_params.height;
+    m_pCodecCtx->bit_rate = encode_params.bitrate;
+    m_pCodecCtx->width = encode_params.width;
+    m_pCodecCtx->height = encode_params.height;
     /* frames per second */
 
-    m_codec_ctx->time_base = { 1, encode_params.fps };
-    m_codec_ctx->framerate = { encode_params.fps, 1 };
+    m_pCodecCtx->time_base = { 1, encode_params.fps };
+    m_pCodecCtx->framerate = { encode_params.fps, 1 };
 
-    m_codec_ctx->gop_size = encode_params.gop;
-    m_codec_ctx->max_b_frames = 0;
-    m_codec_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+    m_pCodecCtx->gop_size = encode_params.gop;
+    m_pCodecCtx->max_b_frames = 0;
+    m_pCodecCtx->pix_fmt = AV_PIX_FMT_YUV420P;
 
-    m_codec_ctx->qmin = encode_params.qmin;
-    m_codec_ctx->qmax = encode_params.qmax;
-    m_codec_ctx->qcompress = encode_params.qcompress;
+    m_pCodecCtx->qmin = encode_params.qmin;
+    m_pCodecCtx->qmax = encode_params.qmax;
+    m_pCodecCtx->qcompress = encode_params.qcompress;
 
-    m_codec_ctx->thread_count = encode_params.thread_count;
+    m_pCodecCtx->thread_count = encode_params.thread_count;
 
     if (encodec->id == AV_CODEC_ID_H264)
     {
-        av_opt_set(m_codec_ctx->priv_data, "tune", "zerolatency", 0);
+        av_opt_set(m_pCodecCtx->priv_data, "tune", "zerolatency", 0);
     }
 
-    int ret = avcodec_open2(m_codec_ctx, encodec, NULL);
+    int ret = avcodec_open2(m_pCodecCtx, encodec, NULL);
     if (ret < 0)
     {
         char errStr[256] = { 0 };
         av_strerror(ret, errStr, sizeof(errStr));
-        printf("[thread][%d], error avcodec_open2 (%s)\n", m_threadId, errStr);
+        printf("[thread][%d], error avcodec_open2 (%s)\n", m_uThreadId, errStr);
         return -1;
     }
     return 0;
@@ -213,9 +213,9 @@ int EncodeManager::Open_encode_context(const Encode_Params& encode_params)
 
 int EncodeManager::Init_swrContext()
 {
-    m_sws_ctx = sws_getContext(m_codec_ctx->width, m_codec_ctx->height, AV_PIX_FMT_RGB32, m_codec_ctx->width, m_codec_ctx->height, AV_PIX_FMT_YUV420P, SWS_BILINEAR, NULL, NULL, NULL);
-    if (!m_sws_ctx) {
-        printf("[thread][%d], Failed to get sws context\n", m_threadId);
+    m_pSwsCtx = sws_getContext(m_pCodecCtx->width, m_pCodecCtx->height, AV_PIX_FMT_RGB32, m_pCodecCtx->width, m_pCodecCtx->height, AV_PIX_FMT_YUV420P, SWS_BILINEAR, NULL, NULL, NULL);
+    if (!m_pSwsCtx) {
+        printf("[thread][%d], Failed to get sws context\n", m_uThreadId);
     }
     return 0;
 }
@@ -227,74 +227,74 @@ int EncodeManager::BGRA2YUV(uint8_t* bgra_img, int width, int height)
     int insize[AV_NUM_DATA_POINTERS] = { 0 };
     insize[0] = width * 4;
     int ret = 0;
-    ret = sws_scale(m_sws_ctx, indata, insize, 0, height, m_frame->data, m_frame->linesize);
-    m_frame->pts = m_pts;
+    ret = sws_scale(m_pSwsCtx, indata, insize, 0, height, m_pFrame->data, m_pFrame->linesize);
+    m_pFrame->pts = m_ulPts;
     return 0;
 }
 
 int EncodeManager::Open_video_output()
 {
-    if (m_isRtsp)
+    if (m_bIsRtsp)
     {
-        if (avformat_alloc_output_context2(&m_video_ofmt_ctx, NULL, "rtsp", m_rtsp_url.c_str()) < 0)
+        if (avformat_alloc_output_context2(&m_pVideoOfmtCtx, NULL, "rtsp", m_sRtspUrl.c_str()) < 0)
         {
-            printf("[thread][%d], Failed to alloc rtsp output format context\n", m_threadId);
+            printf("[thread][%d], Failed to alloc rtsp output format context\n", m_uThreadId);
             return -1;
         }
-        av_opt_set(m_video_ofmt_ctx->priv_data, "rtsp_transport", "udp", 0);
+        av_opt_set(m_pVideoOfmtCtx->priv_data, "rtsp_transport", "udp", 0);
     }
     else
     {
-        if (avformat_alloc_output_context2(&m_video_ofmt_ctx, NULL, NULL, m_output_filename.c_str()) < 0)
+        if (avformat_alloc_output_context2(&m_pVideoOfmtCtx, NULL, NULL, m_sOutputFilename.c_str()) < 0)
         {
-            printf("[thread][%d], Failed to alloc file output format context\n", m_threadId);
+            printf("[thread][%d], Failed to alloc file output format context\n", m_uThreadId);
             return -1;
         }
     }
 
 
-    m_video_stream = avformat_new_stream(m_video_ofmt_ctx, NULL);
-    if (NULL == m_video_stream)
+    m_pVideoStream = avformat_new_stream(m_pVideoOfmtCtx, NULL);
+    if (NULL == m_pVideoStream)
     {
-        printf("[thread][%d], Failed to add new stream\n", m_threadId);
+        printf("[thread][%d], Failed to add new stream\n", m_uThreadId);
         return -1;
     }
-    m_video_stream->id = m_video_ofmt_ctx->nb_streams - 1;
+    m_pVideoStream->id = m_pVideoOfmtCtx->nb_streams - 1;
 
-    if (avcodec_parameters_from_context(m_video_stream->codecpar, m_codec_ctx) < 0)
+    if (avcodec_parameters_from_context(m_pVideoStream->codecpar, m_pCodecCtx) < 0)
     {
-        printf("[thread][%d], Failed to copy codec parameters\n", m_threadId);
+        printf("[thread][%d], Failed to copy codec parameters\n", m_uThreadId);
         return  -1;
     }
-    m_video_stream->time_base = m_codec_ctx->time_base;
-    m_video_stream->r_frame_rate = m_codec_ctx->framerate;
-    m_video_stream->codecpar->codec_tag = 0;
+    m_pVideoStream->time_base = m_pCodecCtx->time_base;
+    m_pVideoStream->r_frame_rate = m_pCodecCtx->framerate;
+    m_pVideoStream->codecpar->codec_tag = 0;
 
-    if (m_isRtsp)
+    if (m_bIsRtsp)
     {
-        if(!(m_video_ofmt_ctx->oformat->flags & AVFMT_NOFILE))
+        if(!(m_pVideoOfmtCtx->oformat->flags & AVFMT_NOFILE))
         {
-            if (avio_open(&m_video_ofmt_ctx->pb, m_rtsp_url.c_str(), AVIO_FLAG_WRITE) < 0)
+            if (avio_open(&m_pVideoOfmtCtx->pb, m_sRtspUrl.c_str(), AVIO_FLAG_WRITE) < 0)
             {
-                printf("[thread][%d], Failed to alloc rtsp avio\n", m_threadId);
+                printf("[thread][%d], Failed to alloc rtsp avio\n", m_uThreadId);
                 return -1;
             }
         }
     }
     else
     {
-        if (avio_open(&m_video_ofmt_ctx->pb, m_output_filename.c_str(), AVIO_FLAG_WRITE) < 0)
+        if (avio_open(&m_pVideoOfmtCtx->pb, m_sOutputFilename.c_str(), AVIO_FLAG_WRITE) < 0)
         {
-            printf("[thread][%d], Failed to open file avio\n", m_threadId);
+            printf("[thread][%d], Failed to open file avio\n", m_uThreadId);
             return -1;
         }
     }
 
-    av_dump_format(m_video_ofmt_ctx, 0, m_rtsp_url.c_str(), 1);
+    av_dump_format(m_pVideoOfmtCtx, 0, m_sRtspUrl.c_str(), 1);
 
-    if (avformat_write_header(m_video_ofmt_ctx, NULL) < 0)
+    if (avformat_write_header(m_pVideoOfmtCtx, NULL) < 0)
     {
-        printf("[thread][%d], Failed to write header\n", m_threadId);
+        printf("[thread][%d], Failed to write header\n", m_uThreadId);
         return -1;
     }
 
@@ -303,6 +303,6 @@ int EncodeManager::Open_video_output()
 
 int EncodeManager::End_video_output()
 {
-    av_write_trailer(m_video_ofmt_ctx);
+    av_write_trailer(m_pVideoOfmtCtx);
     return 0;
 }

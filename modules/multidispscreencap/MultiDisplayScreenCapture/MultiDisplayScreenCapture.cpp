@@ -28,119 +28,141 @@
 
 #include "MultiDisplayScreenCapture.h"
 
-MultiDisplayScreenCapture::MultiDisplayScreenCapture() : m_UnexpectedErrorEvent(nullptr),
-                                                         m_ExpectedErrorEvent(nullptr),
-                                                         m_TerminateThreadsEvent(nullptr)
+//
+// Constructor
+//
+MultiDisplayScreenCapture::MultiDisplayScreenCapture() : m_hTerminateCaptureEvent(nullptr)
 {
 
 }
 
+//
+// Destructor
+//
 MultiDisplayScreenCapture::~MultiDisplayScreenCapture()
 {
-    // Clean up
-    CloseHandle(m_UnexpectedErrorEvent);
-    CloseHandle(m_ExpectedErrorEvent);
-    CloseHandle(m_TerminateThreadsEvent);
+    CloseHandle(m_hTerminateCaptureEvent);
 }
 
-DUPL_RETURN MultiDisplayScreenCapture::Init()
+//
+// Init
+//
+SCREENCAP_STATUS MultiDisplayScreenCapture::Init()
 {
-    DUPL_RETURN Ret = m_ThreadMgr.Initialize();
+    SCREENCAP_STATUS Ret = m_cScreenMgr.Initialize();
     return Ret;
 }
 
-DUPL_RETURN MultiDisplayScreenCapture::SetSingleDisplay(int SingleDispNumber)
+//
+// Set Single Display
+//
+SCREENCAP_STATUS MultiDisplayScreenCapture::SetSingleDisplay(int SingleDispNumber)
 {
-    DUPL_RETURN Ret = m_ThreadMgr.SetSingleOuput(true, SingleDispNumber);
+    SCREENCAP_STATUS Ret = m_cScreenMgr.SetSingleOuput(true, SingleDispNumber);
     return Ret;
 }
 
+//
+// Check Single Display
+//
 UINT MultiDisplayScreenCapture::GetDisplayCount()
 {
-	return m_ThreadMgr.GetOutputCount();
+	return m_cScreenMgr.GetOutputCount();
 }
 
+//
+// Check Captured Screen Count
+//
 UINT MultiDisplayScreenCapture::GetOutputCount()
 {
-    return m_ThreadMgr.GetThreadCount();
+    return m_cScreenMgr.GetScreenCount();
 }
 
+//
+// Get Buffer Queue
+//
 BufferQueue* MultiDisplayScreenCapture::GetBufferQueues()
 {
-    return m_ThreadMgr.GetBufferQueues();
+    return m_cScreenMgr.GetBufferQueues();
 }
 
-
-DUPL_RETURN MultiDisplayScreenCapture::StartCaptureScreen()
+//
+// Start Capture Screen
+//
+SCREENCAP_STATUS MultiDisplayScreenCapture::StartCaptureScreen()
 {
-    // Event used by the threads to signal an unexpected error and we want to quit the app
-    m_UnexpectedErrorEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-    if (!m_UnexpectedErrorEvent)
+    m_hTerminateCaptureEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    if (!m_hTerminateCaptureEvent)
     {
-        ProcessFailure(nullptr, L"UnexpectedErrorEvent creation failed", L"Error", E_UNEXPECTED);
-        return DUPL_RETURN_ERROR_UNEXPECTED;
-    }
-
-    // Event for when a thread encounters an expected error
-    m_ExpectedErrorEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-    if (!m_ExpectedErrorEvent)
-    {
-        ProcessFailure(nullptr, L"ExpectedErrorEvent creation failed", L"Error", E_UNEXPECTED);
-        return DUPL_RETURN_ERROR_UNEXPECTED;
-    }
-
-    // Event to tell spawned threads to quit
-    m_TerminateThreadsEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-    if (!m_TerminateThreadsEvent)
-    {
-        ProcessFailure(nullptr, L"TerminateThreadsEvent creation failed", L"Error", E_UNEXPECTED);
-        return DUPL_RETURN_ERROR_UNEXPECTED;
+        return SCREENCAP_FAILED;
     }
 
     RECT DeskBounds;
     UINT OutputCount = 0;
-    DUPL_RETURN Ret = m_ThreadMgr.Process(m_UnexpectedErrorEvent, m_ExpectedErrorEvent, m_TerminateThreadsEvent);
-    if (Ret != DUPL_RETURN_SUCCESS)
+    SCREENCAP_STATUS Ret = m_cScreenMgr.Process(m_hTerminateCaptureEvent);
+    if (Ret != SCREENCAP_SUCCESSED)
     {
-        ProcessFailure(nullptr, L"Thread Process failed", L"Error", E_UNEXPECTED);
-        return DUPL_RETURN_ERROR_UNEXPECTED;
+        return SCREENCAP_FAILED;
     }
 
-    return DUPL_RETURN_SUCCESS;
+    return SCREENCAP_SUCCESSED;
 }
 
-DUPL_RETURN MultiDisplayScreenCapture::TerminateCaptureScreen()
+//
+// Terminate Capture Screen
+//
+SCREENCAP_STATUS MultiDisplayScreenCapture::TerminateCaptureScreen()
 {
     // Make sure all other threads have exited
-    if (SetEvent(m_TerminateThreadsEvent))
+    if (SetEvent(m_hTerminateCaptureEvent))
     {
-        m_ThreadMgr.WaitForThreadTermination();
+        m_cScreenMgr.WaitForThreadTermination();
     }
     else
     {
-        return DUPL_RETURN_ERROR_UNEXPECTED;
+        return SCREENCAP_FAILED;
     }
-    return DUPL_RETURN_SUCCESS;
+    return SCREENCAP_SUCCESSED;
 }
 
-DUPL_RETURN MultiDisplayScreenCapture::DeInit()
+//
+// DeInit
+//
+SCREENCAP_STATUS MultiDisplayScreenCapture::DeInit()
 {
     TerminateCaptureScreen();
-	m_ThreadMgr.Clean();
-    return DUPL_RETURN_SUCCESS;
+	m_cScreenMgr.Clean();
+    return SCREENCAP_SUCCESSED;
 }
 
-DX_RESOURCES* MultiDisplayScreenCapture::GetDXResource(int thread)
+
+//
+// Get DX Resources according to DisplayNumber
+//
+DX_RESOURCES *MultiDisplayScreenCapture::GetDXResource(UINT DisplayNumber) {
+    return m_cScreenMgr.GetDXResource(DisplayNumber);
+}
+
+//
+// Set Capture FPS
+//
+SCREENCAP_STATUS MultiDisplayScreenCapture::SetCaptureFps(UINT fps)
 {
-    return m_ThreadMgr.GetDXResource(thread);
+    return m_cScreenMgr.SetCaptureFps(fps);
 }
 
-DUPL_RETURN MultiDisplayScreenCapture::SetCaptureFps(UINT fps)
-{
-    return m_ThreadMgr.SetCaptureFps(fps);
-}
-
+//
+// Get Capture FPS
+//
 UINT MultiDisplayScreenCapture::GetCaptureFps()
 {
-    return m_ThreadMgr.GetCaptureFps();
+    return m_cScreenMgr.GetCaptureFps();
+}
+
+//
+// Check if Capture Terminated
+//
+bool MultiDisplayScreenCapture::CheckIfCaptureTerminated()
+{
+    return m_cScreenMgr.IsCaptureTerminated();
 }

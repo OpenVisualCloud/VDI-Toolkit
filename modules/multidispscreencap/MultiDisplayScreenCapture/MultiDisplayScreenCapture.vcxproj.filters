@@ -15,19 +15,16 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="framework.h">
+    <ClInclude Include="MDSCTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CommonTypes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThreadManager.h">
+    <ClInclude Include="ScreenManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MultiDisplayScreenCapture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DuplicationManager.h">
+    <ClInclude Include="CaptureManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ScreenCapture.h">
@@ -38,10 +35,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DuplicationManager.cpp">
+    <ClCompile Include="CaptureManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ThreadManager.cpp">
+    <ClCompile Include="ScreenManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MultiDisplayScreenCapture.cpp">

@@ -26,50 +26,64 @@
  *
  */
 
-#ifndef _THREADMANAGER_H_
-#define _THREADMANAGER_H_
+#ifndef _FRAMEWORK_H_
+#define _FRAMEWORK_H_
 
-#include <stdio.h>
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+// Windows Header Files
+#include <windows.h>
 
-#include "CommonTypes.h"
-#include "framework.h"
-#include "warning.h"
-#include "BufferQueue.h"
+#ifdef MDSCLIB_EXPORTS
+#define MDSCLIB_API __declspec(dllexport)
+#else
+#define MDSCLIB_API __declspec(dllimport)
+#endif
 
-class MDSCLIB_API THREADMANAGER
-{
-    public:
-        THREADMANAGER();
-        ~THREADMANAGER();
-        void Clean();
-        DUPL_RETURN Initialize();
-        DUPL_RETURN SetSingleOuput(bool SingleOutput = false , UINT SingleOutNumber = 0);
-        DUPL_RETURN Process(HANDLE UnexpectedErrorEvent, HANDLE ExpectedErrorEvent, HANDLE TerminateThreadsEvent);
-        PTR_INFO* GetPointerInfo();
-        void WaitForThreadTermination();
-        UINT GetOutputCount();
-        UINT GetThreadCount();
-        BufferQueue* GetBufferQueues();
-        DX_RESOURCES* GetDXResource(int thread);
-        DUPL_RETURN SetCaptureFps(UINT fps);
-        UINT GetCaptureFps();
+#include <DirectXMath.h>
+#include <d3d11.h>
+#include <dxgi1_2.h>
+#include <new>
+#include <sal.h>
+#include <warning.h>
+#include <windows.h>
+#include <wrl\client.h>
 
-    private:
-        DUPL_RETURN InitializeDx(_Out_ DX_RESOURCES* Data);
-        DUPL_RETURN GetAdapterCount(_In_ ID3D11Device* Device);
-        void CleanDx(_Inout_ DX_RESOURCES* Data);
 
-        PTR_INFO m_PtrInfo;
+using namespace DirectX;
+using Microsoft::WRL::ComPtr;
 
-        bool m_SingleOutput;
-        INT m_SingleOutNumber;
-        UINT m_OutputCount;
-        UINT m_ThreadCount;
-        _Field_size_(m_ThreadCount) HANDLE* m_ThreadHandles;
-        _Field_size_(m_ThreadCount) THREAD_DATA* m_ThreadData;
-        _Field_size_(m_ThreadCount) BufferQueue* m_BufferQueues;
+typedef _Return_type_success_(return == SCREENCAP_SUCCESSED) enum {
+  SCREENCAP_SUCCESSED = 0,
+  SCREENCAP_CONTINUED = 1,
+  SCREENCAP_FAILED    = 2
+} SCREENCAP_STATUS;
 
-        UINT m_CaptureFps;
-};
+//
+// D3D Resources
+//
+typedef struct DX_RESOURCES {
+  ID3D11Device *Device;
+  ID3D11DeviceContext *Context;
+} DxResources;
+
+//
+// CaptureManager Captured Data
+//
+typedef struct CAPTURED_DATA {
+  ID3D11Texture2D *CapturedTexture;
+  uint64_t AcquiredTime;
+  DXGI_OUTDUPL_FRAME_INFO FrameInfo;
+} CapturedData;
+
+//
+// ScreenManager thread input params
+//
+typedef struct THREAD_INPUT_PARAMS {
+  HANDLE TerminateThreadsEvent;
+  UINT ScreenNumber;
+  DX_RESOURCES DxRes;
+  HANDLE BufferQueueHandle;
+  UINT CaptureFps;
+} ThreadInputParams;
 
 #endif

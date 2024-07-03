@@ -40,7 +40,7 @@ set ffmpegurl=https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-6.1.1-full_buil
 set ffmpegpath=%depsPath%\ffmpeg-6.1.1-full_build-shared
 set ffmpegoutput=%depsPath%\ffmpeg-6.1.1-full_build-shared.7z
 powershell.exe -c "Invoke-WebRequest -Uri %ffmpegurl% -OutFile %ffmpegoutput%"
-7z.exe x %ffmpegoutput% *.* %depsPath%
+7z.exe x %ffmpegoutput% -o%depsPath%
 set ffmpegincludepath=%ffmpegpath%\include
 set ffmpegdllpath=%ffmpegpath%\bin
 set ffmpeglibpath=%ffmpegpath%\lib
@@ -88,11 +88,11 @@ set mediaMTXoutput=bin\mediamtx_v1.6.0_windows_amd64.zip
 set mediaMTXpath=bin\mediamtx_v1.6.0_windows_amd64
 powershell.exe -c "Invoke-WebRequest -Uri %mediaMTXurl% -OutFile %mediaMTXoutput%"
 mkdir %mediaMTXpath%
-7z.exe x %mediaMTXoutput% *.* %mediaMTXpath%
+7z.exe x %mediaMTXoutput% -o%mediaMTXpath%
 rd /s /q x64
 rd /s /q %MDSCLibProjectPath%\x64
 rd /s /q %MDSCSampleProjectPath%\x64
 
 echo.
-echo MDSC buils successfully.
+echo MDSC builds successfully.
 pause

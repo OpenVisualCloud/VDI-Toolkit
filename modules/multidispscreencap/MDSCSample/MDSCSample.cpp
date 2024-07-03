@@ -29,7 +29,6 @@
 // MDSCSample.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <iostream>
 #include "MultiDisplayScreenCapture.h"
 #include "EncodeManager.h"
 #include "JsonConfig.h"
@@ -37,7 +36,7 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
-typedef struct _ENCODE_THREAD_DATA
+typedef struct ENCODE_THREAD_INPUT_PARAMS
 {
     HANDLE TerminateThreadsEvent;
     DX_RESOURCES *DxRes;
@@ -49,7 +48,7 @@ typedef struct _ENCODE_THREAD_DATA
     std::string StreamUrl;
     std::string EncDumpPath;
 
-} ENCODE_THREAD_DATA;
+} EncodeThreadInputParams;
 
 bool g_exit = false;
 
@@ -58,27 +57,28 @@ DWORD WINAPI EncodeProc(_In_ void* Param);
 DWORD WINAPI EncodeProc(_In_ void* Param)
 {
     // Data passed in from thread creation
-    ENCODE_THREAD_DATA* TData = reinterpret_cast<ENCODE_THREAD_DATA*>(Param);
-    while (1)
+    EncodeThreadInputParams* TData = reinterpret_cast<EncodeThreadInputParams*>(Param);
+    while ((WaitForSingleObjectEx(TData->TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT))
     {
         if (TData->PtrBufferQueue->GetSize() > 0)
         {
-            FRAME_DATA CurrentData = TData->PtrBufferQueue->DequeueBuffer();
+            CapturedData Data = TData->PtrBufferQueue->DequeueBuffer();
 
             D3D11_TEXTURE2D_DESC desc;
 
-            if (CurrentData.Frame)
+            if (Data.CapturedTexture)
             {
-                CurrentData.Frame->GetDesc(&desc);
+                Data.CapturedTexture->GetDesc(&desc);
                 TData->EncParams.width = desc.Width;
                 TData->EncParams.height = desc.Height;
-                CurrentData.Frame->Release();
-                CurrentData.Frame = nullptr;
+                Data.CapturedTexture->Release();
+                Data.CapturedTexture = nullptr;
                 printf("[Thread][%d], The display resolution is %dx%d\n", TData->ThreadId, desc.Width, desc.Height);
                 break;
             }
             else
             {
+                printf("[Thread][%d], No valid texture in captured data\n", TData->ThreadId);
                 return -1;
             }
         }
@@ -109,8 +109,8 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
     }
 
     int n = 0;
-    FRAME_DATA CurrentData = FRAME_DATA{};
-    FRAME_DATA LastData = FRAME_DATA{};
+    CapturedData CurrentData = CapturedData{};
+    CapturedData LastData = CapturedData{};
 #ifdef DUMP_RGBA
     std::string CapDumpFileName = TData->CapDumpPath + std::to_string(TData->ThreadId) + ".rgba";
     FILE* fp = fopen(CapDumpFileName.c_str(), "wb");
@@ -124,19 +124,21 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
         if (BufferQueueSize > 0)
         {
             CurrentData = TData->PtrBufferQueue->DequeueBuffer();
-            if (LastData.Frame)
+
+            if (LastData.CapturedTexture)
             {
-                LastData.Frame->Release();
-                LastData.Frame = nullptr;
+                LastData.CapturedTexture->Release();
+                LastData.CapturedTexture = nullptr;
             }
             LastData = CurrentData;
         }
         else
         {
             //Fake frame, encode last frame
-            if (LastData.Frame)
+
+            if (LastData.CapturedTexture)
             {
-                LastData.FrameAcquiredTime++;
+                LastData.AcquiredTime++;
                 CurrentData = LastData;
             }
             else
@@ -144,40 +146,41 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
         }
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////
         D3D11_MAPPED_SUBRESOURCE mapped;
-        if (CurrentData.Frame)
+
+        if (CurrentData.CapturedTexture)
         {
-            HRESULT hr = TData->DxRes->Context->Map(CurrentData.Frame, 0, D3D11_MAP_READ, 0, &mapped);
-            if (FAILED(hr)) {
+            HRESULT hr = TData->DxRes->Context->Map(CurrentData.CapturedTexture, 0, D3D11_MAP_READ, 0, &mapped);
+            if (FAILED(hr))
+            {
                 printf("[Thread][%d], frame %d, failed to map texture\n", TData->ThreadId, n);
-                if (CurrentData.Frame)
-                {
-                    CurrentData.Frame->Release();
-                    CurrentData.Frame = nullptr;
-                }
+                CurrentData.CapturedTexture->Release();
+                CurrentData.CapturedTexture = nullptr;
                 continue;
             }
-        }
-        else
-        {
-            printf("[Thread][%d], frame %d, texture is nullptr\n", TData->ThreadId, n);
-            return -1;
-        }
 
-        if (mapped.pData)
-        {
-            uint8_t* data = static_cast<uint8_t*>(mapped.pData);
+            if (mapped.pData)
+            {
+                uint8_t* data = static_cast<uint8_t*>(mapped.pData);
 #ifdef DUMP_RGBA
-            fwrite(data, mapped.DepthPitch, 1, fp);
+                fwrite(data, mapped.DepthPitch, 1, fp);
 #endif
-            if (data != NULL)
-                video_encode.Encode(data, CurrentData.FrameAcquiredTime);
-        }
+                if (data != NULL)
+                    video_encode.Encode(data, CurrentData.AcquiredTime);
+            }
+            else
+            {
+                printf("[Thread][%d], frame %d, No valid mapped Texture Data\n", TData->ThreadId, n);
+                CurrentData.CapturedTexture->Release();
+                CurrentData.CapturedTexture = nullptr;
+                continue;
+            }
 
-        TData->DxRes->Context->Unmap(CurrentData.Frame, 0);
+            TData->DxRes->Context->Unmap(CurrentData.CapturedTexture, 0);
+        }
 
         std::chrono::time_point<std::chrono::high_resolution_clock> endtp = std::chrono::high_resolution_clock::now();
         uint64_t timecost = std::chrono::duration_cast<std::chrono::microseconds>(endtp - starttp).count();
-        //printf("thread %d, dequeue frame %d, CurrentData Frame ptr %p, FrameAcquireTime %u, encodeframe costtime %dus\n", TData->ThreadId, n, CurrentData.Frame, CurrentData.FrameAcquiredTime, timecost);
+        //printf("thread %d, dequeue frame %d, CurrentData texture ptr %p, AcquiredTime %u, encodeframe costtime %dus\n", TData->ThreadId, n, CurrentData.CapturedTexture, CurrentData.AcquiredTime, timecost);
         int EncodeInterval = TData->EncParams.fps != 0 ? 1000000 / TData->EncParams.fps : 0;
         if (timecost < EncodeInterval)
         {
@@ -190,6 +193,13 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
     fclose(fp);
 #endif
     video_encode.End_video_output();
+
+    if (CurrentData.CapturedTexture)
+    {
+        CurrentData.CapturedTexture->Release();
+        CurrentData.CapturedTexture = nullptr;
+    }
+
     return 0;
 }
 
@@ -266,21 +276,21 @@ int main()
     // init and start encode and stream
     BufferQueue* BufferQueues = MDSCsample.GetBufferQueues();
 
-    ENCODE_THREAD_DATA* ThreadData = new ENCODE_THREAD_DATA[OutNum];
+    EncodeThreadInputParams* ThreadData = new EncodeThreadInputParams[OutNum];
     HANDLE* ThreadHandles = new HANDLE[OutNum];
 
-    HANDLE TerminateThreadsEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-    if (!TerminateThreadsEvent)
+    HANDLE TerminateEncodeEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    if (!TerminateEncodeEvent)
     {
         printf("Failed to create TerminateThreadsEvent\n");
-        return DUPL_RETURN_ERROR_UNEXPECTED;
+        return SCREENCAP_FAILED;
     }
 
     printf("Start to create %d encoding threads \n", OutNum);
     encode_params.st_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     for (UINT i = 0; i < OutNum; ++i)
     {
-        ThreadData[i].TerminateThreadsEvent = TerminateThreadsEvent;
+        ThreadData[i].TerminateThreadsEvent = TerminateEncodeEvent;
         ThreadData[i].DxRes = MDSCsample.GetDXResource(i);
         ThreadData[i].PtrBufferQueue = &BufferQueues[i];
         ThreadData[i].ThreadId = capture_single_display ? capture_single_display_number : i;
@@ -296,7 +306,7 @@ int main()
         if (ThreadHandles[i] == nullptr)
         {
             printf("Failed to create encoding thread %d\n", i);
-            return DUPL_RETURN_ERROR_UNEXPECTED;
+            return SCREENCAP_FAILED;
         }
     }
 
@@ -304,6 +314,10 @@ int main()
     SetConsoleCtrlHandler(HandlerRoutine, TRUE);
     while (!g_exit)
     {
+        if (MDSCsample.CheckIfCaptureTerminated())
+        {
+            goto Exit;
+        }
         for (UINT i = 0; i < OutNum; ++i)
         {
             DWORD res = WaitForSingleObjectEx(ThreadHandles[i], 1000/encode_params.fps, false);
@@ -316,17 +330,22 @@ int main()
 
 Exit:
     // Make sure all encode threads have exited
-    if (SetEvent(TerminateThreadsEvent))
+    if (SetEvent(TerminateEncodeEvent))
     {
         WaitForMultipleObjectsEx(OutNum, ThreadHandles, TRUE, INFINITE, FALSE);
     }
 
     // Clean up
-    CloseHandle(TerminateThreadsEvent);
+    CloseHandle(TerminateEncodeEvent);
 
     // Make sure all capture threads have exited
-    MDSCsample.TerminateCaptureScreen();
     MDSCsample.DeInit();
+
+    if (ThreadData)
+    {
+        delete [] ThreadData;
+        ThreadData = nullptr;
+    }
 
     return 0;
 }

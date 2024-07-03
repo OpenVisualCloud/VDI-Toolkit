@@ -28,46 +28,103 @@
 
 #include "BufferQueue.h"
 
-BufferQueue::BufferQueue() {
-    m_Size = 0;
-    m_maxSize = 6;
-    std::unique_lock<std::mutex> lock(queue_mutex_);
+//
+// Constructor
+//
+BufferQueue::BufferQueue()
+{
+    m_nSize = 0;
+    m_mMaxSize = 6;
+    std::unique_lock<std::mutex> lock(m_mQueueMutex);
 }
 
-bool BufferQueue::EnqueueBuffer(FRAME_DATA frame_data) {
-    std::unique_lock<std::mutex> lock(queue_mutex_);
-    m_SourceQueue.push(frame_data);
-    m_Size += 1;
-    if (m_Size > m_maxSize) {
-        m_SourceQueue.pop();
-        m_Size -= 1;
+//
+// Destructor
+//
+BufferQueue::~BufferQueue()
+{
+    CleanBuffer();
+}
+
+//
+// Enqueue Buffer
+//
+bool BufferQueue::EnqueueBuffer(CapturedData Data)
+{
+    std::unique_lock<std::mutex> lock(m_mQueueMutex);
+    m_qSourceQueue.push(Data);
+    m_nSize += 1;
+    if (m_nSize > m_mMaxSize) {
+        CapturedData data = m_qSourceQueue.front();
+        if (data.CapturedTexture)
+        {
+            data.CapturedTexture->Release();
+            data.CapturedTexture = nullptr;
+        }
+        m_qSourceQueue.pop();
+        m_nSize -= 1;
     }
     return true;
 }
 
-bool BufferQueue::SetMaxSize(int psize) {
-    m_maxSize = psize;
+//
+// Set Buffer Queue Max Size
+//
+bool BufferQueue::SetMaxSize(int psize)
+{
+    m_mMaxSize = psize;
     return true;
 }
 
-FRAME_DATA BufferQueue::DequeueBuffer() {
-    std::unique_lock<std::mutex> lock(queue_mutex_);
-    FRAME_DATA FrameData{};
-    if (!m_SourceQueue.empty()) {
-        FrameData = m_SourceQueue.front();
-        if (m_Size >= 1) {
-            m_SourceQueue.pop();
-            m_Size -= 1;
+//
+// Dequeue Buffer
+//
+CapturedData BufferQueue::DequeueBuffer()
+{
+    std::unique_lock<std::mutex> lock(m_mQueueMutex);
+    CapturedData Data{};
+    if (!m_qSourceQueue.empty()) {
+        Data = m_qSourceQueue.front();
+        if (m_nSize >= 1) {
+            m_qSourceQueue.pop();
+            m_nSize -= 1;
         }
     }
-    return FrameData;
+    return Data;
 }
 
-FRAME_DATA BufferQueue::AcquireBuffer() {
-    std::unique_lock<std::mutex> lock(queue_mutex_);
-    FRAME_DATA FrameData{};
-    if (!m_SourceQueue.empty()) {
-        FrameData = m_SourceQueue.front();
+//
+// Acquire Buffer
+//
+CapturedData BufferQueue::AcquireBuffer()
+{
+    std::unique_lock<std::mutex> lock(m_mQueueMutex);
+    CapturedData Data{};
+    if (!m_qSourceQueue.empty()) {
+        Data = m_qSourceQueue.front();
     }
-    return FrameData;
+    return Data;
+}
+
+//
+// Clean Buffer
+//
+bool BufferQueue::CleanBuffer()
+{
+    HRESULT hr = S_OK;
+    bool res = true;
+    while (m_nSize > 0)
+    {
+        CapturedData Data = DequeueBuffer();
+        if (Data.CapturedTexture)
+        {
+            hr = Data.CapturedTexture->Release();
+            Data.CapturedTexture = nullptr;
+            if (FAILED(hr))
+            {
+                res = false;
+            }
+        }
+    }
+    return res;
 }
