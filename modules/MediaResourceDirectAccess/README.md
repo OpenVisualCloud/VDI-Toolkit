@@ -32,6 +32,8 @@ cd Scripts/Linux
 ### Prerequisite
 - Visual Studio 17 2022
 - grpc == v1.62.0
+- cmake >= 3.0 (prefer 3.29.3)
+- git >= 2.0 (prefer 2.37.0)
 
 ### How to build MRDA Guest Library
 ```

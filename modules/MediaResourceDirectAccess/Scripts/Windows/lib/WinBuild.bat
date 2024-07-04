@@ -13,7 +13,7 @@ if not exist "..\..\..\external\grpc" (
 )
 @REM install grpc
 if not exist "./install" (
-    mkdir -p cmake\build
+    mkdir cmake\build
     cd cmake\build
     cmake ..\.. -G "Visual Studio 17 2022" -DgRPC_INSTALL=ON -DgRPC_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX="..\..\install" -DCMAKE_BUILD_TYPE=Release
     cmake --build . --config Release --target install

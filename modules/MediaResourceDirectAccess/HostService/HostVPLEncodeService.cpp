@@ -693,8 +693,6 @@ MRDAStatus HostVPLEncodeService::InitMFX()
         MRDA_LOG(LOG_ERROR, "Cannot create session -- no implementations meet selection criteria");
         return MRDA_STATUS_OPERATION_FAIL;
     }
-    // Print info about implementation loaded
-    ShowImplementationInfo(m_loader, 0);
 
     return MRDA_STATUS_SUCCESS;
 }

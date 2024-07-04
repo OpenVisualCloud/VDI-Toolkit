@@ -40,12 +40,11 @@ build_external()
     mkdir -p ../../external && cd ../../external
     build_gitv2
     build_grpc
-    cd ../
+    cd ../Scripts/Linux
 }
 
 build_host()
 {
-    cd ${PWD}
     if [ ! -d "./build" ];then
         mkdir build
     fi
