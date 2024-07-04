@@ -54,9 +54,9 @@ class MDSCLIB_API ScreenManager
         bool IsCaptureTerminated();
 
     private:
-        SCREENCAP_STATUS InitializeDx(_Out_ DX_RESOURCES* Data);
-        SCREENCAP_STATUS GetAdapterCount(_In_ ID3D11Device* Device);
-        void CleanDx(_Inout_ DX_RESOURCES* Data);
+        SCREENCAP_STATUS InitDXResources(DX_RESOURCES *DxRes);
+        SCREENCAP_STATUS GetAdapterCount(ID3D11Device *Device);
+        void ReleaseDxResources(DX_RESOURCES *DxRes);
 
 
         bool m_bSingleOutput;

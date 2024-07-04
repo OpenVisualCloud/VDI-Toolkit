@@ -80,7 +80,7 @@ void ScreenManager::Clean()
     {
         for (UINT i = 0; i < m_uScreenCount; ++i)
         {
-            CleanDx(&m_pScreenInputParams[i].DxRes);
+            ReleaseDxResources(&m_pScreenInputParams[i].DxRes);
         }
         delete [] m_pScreenInputParams;
         m_pScreenInputParams = nullptr;
@@ -92,18 +92,18 @@ void ScreenManager::Clean()
 //
 // Clean up DX_RESOURCES
 //
-void ScreenManager::CleanDx(_Inout_ DX_RESOURCES* Data)
+void ScreenManager::ReleaseDxResources(DX_RESOURCES *DxRes)
 {
-    if (Data->Device)
+    if (DxRes->Device)
     {
-        Data->Device->Release();
-        Data->Device = nullptr;
+        DxRes->Device->Release();
+        DxRes->Device = nullptr;
     }
 
-    if (Data->Context)
+    if (DxRes->Context)
     {
-        Data->Context->Release();
-        Data->Context = nullptr;
+        DxRes->Context->Release();
+        DxRes->Context = nullptr;
     }
 }
 
@@ -117,7 +117,7 @@ SCREENCAP_STATUS ScreenManager::Initialize()
 
     DX_RESOURCES DxRes;
     RtlZeroMemory(&DxRes, sizeof(DX_RESOURCES));
-    Ret = InitializeDx(&DxRes);
+    Ret = InitDXResources(&DxRes);
     if (Ret != SCREENCAP_SUCCESSED)
     {
         return Ret;
@@ -179,7 +179,7 @@ SCREENCAP_STATUS ScreenManager::Process(HANDLE TerminateThreadsEvent)
         m_pScreenInputParams[i].CaptureFps = m_CaptureFps;
 
         RtlZeroMemory(&m_pScreenInputParams[i].DxRes, sizeof(DX_RESOURCES));
-        Ret = InitializeDx(&m_pScreenInputParams[i].DxRes);
+        Ret = InitDXResources(&m_pScreenInputParams[i].DxRes);
         if (Ret != SCREENCAP_SUCCESSED)
         {
             return Ret;
@@ -199,94 +199,88 @@ SCREENCAP_STATUS ScreenManager::Process(HANDLE TerminateThreadsEvent)
 //
 // Initialize DX_RESOURCES
 //
-SCREENCAP_STATUS ScreenManager::InitializeDx(_Out_ DX_RESOURCES* Data)
+SCREENCAP_STATUS ScreenManager::InitDXResources(DX_RESOURCES* DxRes)
 {
-    HRESULT hr = S_OK;
-
-    // Driver types supported
-    D3D_DRIVER_TYPE DriverTypes[] =
+    static D3D_DRIVER_TYPE D3DDriverTypes[] =
     {
         D3D_DRIVER_TYPE_HARDWARE,
-        D3D_DRIVER_TYPE_WARP,
         D3D_DRIVER_TYPE_REFERENCE,
+        D3D_DRIVER_TYPE_SOFTWARE,
+        D3D_DRIVER_TYPE_WARP
     };
-    UINT NumDriverTypes = ARRAYSIZE(DriverTypes);
 
-    // Feature levels supported
-    D3D_FEATURE_LEVEL FeatureLevels[] =
+    static D3D_FEATURE_LEVEL D3DFeatureLevels[] =
     {
         D3D_FEATURE_LEVEL_11_0,
         D3D_FEATURE_LEVEL_10_1,
-        D3D_FEATURE_LEVEL_10_0,
-        D3D_FEATURE_LEVEL_9_1
+        D3D_FEATURE_LEVEL_10_1,
+        D3D_FEATURE_LEVEL_10_0
     };
-    UINT NumFeatureLevels = ARRAYSIZE(FeatureLevels);
 
+    UINT DriverTypesTotalNum = ARRAYSIZE(D3DDriverTypes);
+    UINT FeatureLevelsTotalNum = ARRAYSIZE(D3DFeatureLevels);
     D3D_FEATURE_LEVEL FeatureLevel;
-
-    // Create device
-    for (UINT DriverTypeIndex = 0; DriverTypeIndex < NumDriverTypes; ++DriverTypeIndex)
+    HRESULT hr = S_OK;
+    for (int i = 0; i < ARRAYSIZE(D3DDriverTypes); i++)
     {
-        hr = D3D11CreateDevice(nullptr, DriverTypes[DriverTypeIndex], nullptr, 0, FeatureLevels, NumFeatureLevels,
-                                D3D11_SDK_VERSION, &Data->Device, &FeatureLevel, &Data->Context);
+        hr = D3D11CreateDevice(nullptr, D3DDriverTypes[i], nullptr, 0, D3DFeatureLevels, FeatureLevelsTotalNum, D3D11_SDK_VERSION, &DxRes->Device, &FeatureLevel, &DxRes->Context);
         if (SUCCEEDED(hr))
         {
-            // Device creation success, no need to loop anymore
             break;
         }
     }
+
     if (FAILED(hr))
     {
         return SCREENCAP_FAILED;
     }
-
     return SCREENCAP_SUCCESSED;
 }
 
 //
 // Get Valid Adapters Count
 //
-SCREENCAP_STATUS ScreenManager::GetAdapterCount(_In_ ID3D11Device* Device)
+SCREENCAP_STATUS ScreenManager::GetAdapterCount(ID3D11Device *Device)
 {
     HRESULT hr = S_OK;
 
     // Get DXGI resources
-    IDXGIDevice* DxgiDevice = nullptr;
-    hr = Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DxgiDevice));
+    IDXGIDevice* DXGIDevice = nullptr;
+    hr = Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DXGIDevice));
     if (FAILED(hr))
     {
         return SCREENCAP_FAILED;
     }
 
-    IDXGIAdapter* DxgiAdapter = nullptr;
-    hr = DxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&DxgiAdapter));
-    DxgiDevice->Release();
-    DxgiDevice = nullptr;
+    IDXGIAdapter* DXGIAdapter = nullptr;
+    hr = DXGIDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&DXGIAdapter));
+    DXGIDevice->Release();
+    DXGIDevice = nullptr;
     if (FAILED(hr))
     {
         return SCREENCAP_FAILED;
     }
 
-    IDXGIOutput* DxgiOutput = nullptr;
+    IDXGIOutput* DXGIOutput = nullptr;
 
     // Count the valid DxgiOutputs
     hr = S_OK;
     for (int i = 0; SUCCEEDED(hr); ++i)
     {
-        if (DxgiOutput)
+        if (DXGIOutput)
         {
-            DxgiOutput->Release();
-            DxgiOutput = nullptr;
+            DXGIOutput->Release();
+            DXGIOutput = nullptr;
         }
-        hr = DxgiAdapter->EnumOutputs(i, &DxgiOutput);
-        if (DxgiOutput && (hr != DXGI_ERROR_NOT_FOUND))
+        hr = DXGIAdapter->EnumOutputs(i, &DXGIOutput);
+        if (DXGIOutput && (hr != DXGI_ERROR_NOT_FOUND))
         {
             m_uOutputCount++;
         }
     }
 
-    DxgiAdapter->Release();
-    DxgiAdapter = nullptr;
+    DXGIAdapter->Release();
+    DXGIAdapter = nullptr;
 
     if (m_uOutputCount == 0)
     {

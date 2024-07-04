@@ -75,9 +75,9 @@ CaptureManager::~CaptureManager()
 //
 // Initialize
 //
-SCREENCAP_STATUS CaptureManager::Initialize(ID3D11Device* Device, ID3D11DeviceContext* Context, UINT Output)
+SCREENCAP_STATUS CaptureManager::Initialize(ID3D11Device* Device, ID3D11DeviceContext* Context, UINT ScreenNum)
 {
-    m_uScreenNumber = Output;
+    m_uScreenNumber = ScreenNum;
 
     // Take a reference on the device and context
     m_pDevice = Device;
@@ -86,56 +86,83 @@ SCREENCAP_STATUS CaptureManager::Initialize(ID3D11Device* Device, ID3D11DeviceCo
     m_pContext = Context;
     m_pContext->AddRef();
 
-    IDXGIDevice* DxgiDevice = nullptr;
-    HRESULT hr = m_pDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DxgiDevice));
+    HRESULT hr = S_OK;
+    IDXGIDevice* DXGIDevice = nullptr;
+    IDXGIAdapter* DXGIAdapter = nullptr;
+    IDXGIOutput* DXGIOutput = nullptr;
+    IDXGIOutput1* DXGIOutput1 = nullptr;
+
+    hr = m_pDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&DXGIDevice));
+    if (FAILED(hr))
+    {
+        printf("Error: Failed to get DXGIDevice from D3DDevice\n");
+        goto Exit;
+    }
+
+    hr = DXGIDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&DXGIAdapter));
+    if (FAILED(hr))
+    {
+        printf("Error: Failed to get DXGIAdapter from DXGIDevice\n");
+        goto Exit;
+    }
+
+    hr = DXGIAdapter->EnumOutputs(m_uScreenNumber, &DXGIOutput);
+    if (FAILED(hr))
+    {
+        printf("Error: Failed to get DXGIOutput %d from DXGIAdapter\n", ScreenNum);
+        goto Exit;
+    }
+
+    hr = DXGIOutput->GetDesc(&m_sOutputDesc);
+    if (FAILED(hr))
+    {
+        printf("Error: Failed to GetDesc of DXGIOutput %d\n", ScreenNum);
+        goto Exit;
+    }
+
+    hr = DXGIOutput->QueryInterface(__uuidof(DXGIOutput1), (void**)(&DXGIOutput1));
+    if (FAILED(hr))
+    {
+        printf("Error: Failed to get DXGIDulpOutput from DXGIOutput %d\n", ScreenNum);
+        goto Exit;
+    }
+
+    hr = DXGIOutput1->DuplicateOutput(m_pDevice, &m_pDXGIDupl);
+    if (FAILED(hr))
+    {
+        printf("Error: Failed to duplicate Output with DXGI\n");
+        goto Exit;
+    }
+
+Exit:
+    if (DXGIDevice)
+    {
+        DXGIDevice->Release();
+        DXGIDevice = nullptr;
+    }
+
+    if (DXGIAdapter)
+    {
+        DXGIAdapter->Release();
+        DXGIAdapter = nullptr;
+    }
+
+    if (DXGIOutput)
+    {
+        DXGIOutput->Release();
+        DXGIOutput = nullptr;
+    }
+
+    if (DXGIOutput1)
+    {
+        DXGIOutput1->Release();
+        DXGIOutput1 = nullptr;
+    }
+
     if (FAILED(hr))
     {
         return SCREENCAP_FAILED;
     }
-
-    IDXGIAdapter* DxgiAdapter = nullptr;
-    hr = DxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&DxgiAdapter));
-    DxgiDevice->Release();
-    DxgiDevice = nullptr;
-    if (FAILED(hr))
-    {
-        printf("Failed to GetParent of DxgiDevice\n");
-        return SCREENCAP_FAILED;
-    }
-
-    IDXGIOutput* DxgiOutput = nullptr;
-    hr = DxgiAdapter->EnumOutputs(Output, &DxgiOutput);
-    DxgiAdapter->Release();
-    DxgiAdapter = nullptr;
-    if (FAILED(hr))
-    {
-        return SCREENCAP_FAILED;
-    }
-
-    DxgiOutput->GetDesc(&m_sOutputDesc);
-
-    IDXGIOutput1* DxgiOutput1 = nullptr;
-    hr = DxgiOutput->QueryInterface(__uuidof(DxgiOutput1), reinterpret_cast<void**>(&DxgiOutput1));
-    DxgiOutput->Release();
-    DxgiOutput = nullptr;
-    if (FAILED(hr))
-    {
-        return SCREENCAP_FAILED;
-    }
-
-    hr = DxgiOutput1->DuplicateOutput(m_pDevice, &m_pDXGIDupl);
-    DxgiOutput1->Release();
-    DxgiOutput1 = nullptr;
-    if (FAILED(hr))
-    {
-        if (hr == DXGI_ERROR_NOT_CURRENTLY_AVAILABLE)
-        {
-            printf("Error: DXGI is not currently availble, please check if other binary is in use.\n");
-            return SCREENCAP_FAILED;
-        }
-        return SCREENCAP_FAILED;
-    }
-
     return SCREENCAP_SUCCESSED;
 }
 

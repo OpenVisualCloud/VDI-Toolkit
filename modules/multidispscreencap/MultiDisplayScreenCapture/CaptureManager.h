@@ -37,7 +37,7 @@ class CaptureManager
     public:
         CaptureManager();
         ~CaptureManager();
-        SCREENCAP_STATUS Initialize(ID3D11Device *Device, ID3D11DeviceContext *Context, UINT Output);
+        SCREENCAP_STATUS Initialize(ID3D11Device *Device, ID3D11DeviceContext *Context, UINT ScreenNum);
         SCREENCAP_STATUS CaptureScreen(CapturedData *DataCaptured, UINT TimeOutInMs);
         SCREENCAP_STATUS Release();
         void GetOutputDesc(DXGI_OUTPUT_DESC* DescPtr);
