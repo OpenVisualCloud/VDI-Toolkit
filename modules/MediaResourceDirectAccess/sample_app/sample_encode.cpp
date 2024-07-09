@@ -40,6 +40,7 @@
 #define MULTITHREADENCODING 1
 
 #include <thread>
+#include <chrono>
 
 MRDAStatus ReadRawFrame(FILE *f, FrameBufferItem *data, ColorFormat format)
 {
@@ -122,7 +123,7 @@ MRDAStatus EncodeFrame(MRDAHandle mrda_handle, FILE *sink, std::shared_ptr<Frame
         MRDA_LOG(LOG_ERROR, "send input frame failed!");
         return MRDA_STATUS_OPERATION_FAIL;
     }
-    if (inBuffer != nullptr) MRDA_LOG(LOG_INFO, "Send frame at pts: %llu", inBuffer->pts);
+    // if (inBuffer != nullptr) MRDA_LOG(LOG_INFO, "Send frame at pts: %llu", inBuffer->pts);
     // 2. get output buffer
     while (true)
     {
@@ -143,7 +144,7 @@ MRDAStatus EncodeFrame(MRDAHandle mrda_handle, FILE *sink, std::shared_ptr<Frame
         {
             WriteEncodedFrame(sink, outBuffer.get());
             *cur_pts = outBuffer->pts;
-            MRDA_LOG(LOG_INFO, "Receive frame at pts: %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
+            // MRDA_LOG(LOG_INFO, "Receive frame at pts: %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
         }
 
         if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_ReleaseOutputBuffer(mrda_handle, outBuffer))
@@ -164,7 +165,7 @@ MRDAStatus EncodeFrameAsync(MRDAHandle mrda_handle, std::shared_ptr<FrameBufferI
         MRDA_LOG(LOG_ERROR, "send input frame failed!");
         return MRDA_STATUS_OPERATION_FAIL;
     }
-    if (inBuffer != nullptr) MRDA_LOG(LOG_INFO, "Send buffer at pts: %llu, buffer id %d", inBuffer->pts, inBuffer->bufferItem->buf_id);
+    // if (inBuffer != nullptr) MRDA_LOG(LOG_INFO, "Send buffer at pts: %llu, buffer id %d", inBuffer->pts, inBuffer->bufferItem->buf_id);
 
     return MRDA_STATUS_SUCCESS;
 }
@@ -192,7 +193,7 @@ void ReceiveFrameThread(MRDAHandle mrda_handle, FILE *sink, uint64_t frameNum)
         {
             WriteEncodedFrame(sink, outBuffer.get());
             cur_pts = outBuffer->pts;
-            MRDA_LOG(LOG_INFO, "Receive frame at pts: %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
+            // MRDA_LOG(LOG_INFO, "Receive frame at pts: %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
         }
 
         if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_ReleaseOutputBuffer(mrda_handle, outBuffer))
@@ -200,7 +201,7 @@ void ReceiveFrameThread(MRDAHandle mrda_handle, FILE *sink, uint64_t frameNum)
             MRDA_LOG(LOG_ERROR, "release output buffer failed!");
             return;
         }
-        MRDA_LOG(LOG_INFO, "Release output buffer pts %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
+        // MRDA_LOG(LOG_INFO, "Release output buffer pts %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
         outBuffer->uninit();
     }
     return;
@@ -226,7 +227,7 @@ MRDAStatus FlushFrame(MRDAHandle mrda_handle, FILE *sink, uint64_t cur_pts, uint
         if (outBuffer->pts >= 0)
         {
             WriteEncodedFrame(sink, outBuffer.get());
-            MRDA_LOG(LOG_INFO, "In flush process: Receive frame at pts: %llu", outBuffer->pts);
+            // MRDA_LOG(LOG_INFO, "In flush process: Receive frame at pts: %llu", outBuffer->pts);
         }
         cur_pts = outBuffer->pts;
         if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_ReleaseOutputBuffer(mrda_handle, outBuffer))
@@ -515,8 +516,12 @@ int main(int argc, char **argv)
     // 5. receive main loop
     uint32_t curFrameNum = 0;
     uint64_t cur_pts = 0;
+    std::chrono::high_resolution_clock clock{};
+	uint64_t start = std::chrono::duration_cast<std::chrono::milliseconds>(clock.now().time_since_epoch()).count();
+    uint64_t singleExceedTime = 0;
     while (curFrameNum < inputConfig.frameNum)
     {
+        uint64_t singleStartTime = std::chrono::duration_cast<std::chrono::milliseconds>(clock.now().time_since_epoch()).count();
         // 5.1 get input buffer
         std::shared_ptr<FrameBufferItem> inBuffer = nullptr;
         if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_GetBufferForInput(mrda_handle, inBuffer))
@@ -552,6 +557,19 @@ int main(int argc, char **argv)
 #endif
         inBuffer->uninit();
         curFrameNum++;
+        uint64_t singleEndTime = std::chrono::duration_cast<std::chrono::milliseconds>(clock.now().time_since_epoch()).count();
+        uint64_t singleCost = singleEndTime - singleStartTime;
+        uint64_t singleIteral = static_cast<uint64_t>(1000 / float(inputConfig.framerate_num / inputConfig.framerate_den));
+        if (singleCost + singleExceedTime < singleIteral)
+        {
+            uint64_t sleepTime = singleIteral - singleCost - singleExceedTime;
+            Sleep(sleepTime);
+            singleExceedTime = 0;
+        }
+        else
+        {
+            singleExceedTime = singleCost + singleExceedTime - singleIteral;
+        }
     }
     // 6. flush encoder
     // 6.1 send last empty frame to trigger EOS
@@ -575,6 +593,9 @@ int main(int argc, char **argv)
         return MRDA_STATUS_OPERATION_FAIL;
     }
 #endif
+    uint64_t end = std::chrono::duration_cast<std::chrono::milliseconds>(clock.now().time_since_epoch()).count();
+    float total_fps = static_cast<float>(curFrameNum) * 1000 / (end - start);
+    MRDA_LOG(LOG_INFO, "total encode frame num: %d, fps: %f", curFrameNum, total_fps);
 
     fclose(sink);
     fclose(source);
