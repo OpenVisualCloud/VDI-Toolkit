@@ -337,11 +337,11 @@ CodecProfile StringToCodecProfile(const char *codec_profile)
     CodecProfile codecProfile = CodecProfile::PROFILE_NONE;
     if (0 == strcmp(codec_profile, "avc:main"))
     {
-        codecProfile = CodecProfile::PROFILE_AV1_MAIN;
+        codecProfile = CodecProfile::PROFILE_AVC_MAIN;
     }
     else if (0 == strcmp(codec_profile, "avc:high"))
     {
-        codecProfile = CodecProfile::PROFILE_AV1_HIGH;
+        codecProfile = CodecProfile::PROFILE_AVC_HIGH;
     }
     else if (0 == strcmp(codec_profile, "hevc:main"))
     {
@@ -362,10 +362,42 @@ CodecProfile StringToCodecProfile(const char *codec_profile)
     return codecProfile;
 }
 
+void PrintHelp()
+{
+    printf("%s", "Usage: .\\MRDASampleApp.exe [<options>]\n");
+    printf("%s", "Options: \n");
+    printf("%s", "    [--help]                                 - print help README document. \n");
+    printf("%s", "    [--hostSessionAddr host_session_address] - specifies host session address. \n");
+    printf("%s", "    [-i input_file]                          - specifies input file. \n");
+    printf("%s", "    [-o output_file]                         - specifies output file. \n");
+    printf("%s", "    [--memDevSize memory_device_size]        - specifies memory device size. \n");
+    printf("%s", "    [--bufferNum buffer_number]              - specifies number of buffers. \n");
+    printf("%s", "    [--bufferSize buffer_size]               - specifies buffer size. \n");
+    printf("%s", "    [--inDevPath input_device_path]          - specifies input device path. \n");
+    printf("%s", "    [--outDevPath output_device_path]        - specifies output device path. \n");
+    printf("%s", "    [--frameNum number_of_frames]            - specifies number of frames to process. \n");
+    printf("%s", "    [--codecId codec_identifier]             - specifies the codec identifier. option: h265/hevc | h264/avc \n");
+    printf("%s", "    [--gopSize group_of_pictures_size]       - specifies the size of group of pictures. \n");
+    printf("%s", "    [--asyncDepth asynchronous_depth]        - specifies the asynchronous depth. \n");
+    printf("%s", "    [--targetUsage target_usage]             - specifies the target usage. option: balanced | quality | speed \n");
+    printf("%s", "    [--rcMode rate_control_mode]             - specifies the rate control mode. option: 0(CQP), 1(VBR) \n");
+    printf("%s", "    [--bitrate bitrate value if rcMode is 1] - specifies the bitrate. \n");
+    printf("%s", "    [--qp qp value if rcMode is 0]           - specifies the qp value. \n");
+    printf("%s", "    [--fps frames_per_second]                - specifies the frames per second. \n");
+    printf("%s", "    [--width frame_width]                    - specifies the frame width. \n");
+    printf("%s", "    [--height frame_height]                  - specifies the frame height. \n");
+    printf("%s", "    [--colorFormat color_format]             - specifies the color format. option: yuv420, nv12, rgb32 \n");
+    printf("%s", "    [--codecProfile codec_profile]           - specifies the codec profile. option: avc:main, avc:high, hevc:main, hevc:main10 \n");
+    printf("%s", "    [--gopRefDist gop_reference_distance]    - specifies the GOP reference distance. \n");
+    printf("%s", "    [--numRefFrame reference_frames_number]  - specifies the number of reference frames. \n");
+    printf("%s", "Examples: ./MRDASampleApp.exe --hostSessionAddr 127.0.0.1:50050 -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1 --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --gopRefDist 1 --numRefFrame 1\n");
+}
+
 bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
     // Check if the argument count is reasonable compared to InputConfig requirements
     if (argc < 2) {
         MRDA_LOG(LOG_ERROR, "No enough arguments!");
+        PrintHelp();
         return false; // Not enough arguments
     }
     // Iterate over argv starting at 1 as index 0 is the program name
@@ -417,9 +449,13 @@ bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
             inputConfig->gop_ref_dist = static_cast<uint32_t>(std::atoi(argv[++i]));
         } else if (strcmp(argv[i], "--numRefFrame") == 0 && i + 1 < argc) {
             inputConfig->num_ref_frame = static_cast<uint32_t>(std::atoi(argv[++i]));
+        } else if (strcmp(argv[i], "--help") == 0 && i + 1 < argc) {
+            PrintHelp();
+            return false;
         }
         else {
             MRDA_LOG(LOG_ERROR, "Unknown argument detected: %s", argv[i]);
+            PrintHelp();
             return false; // Unknown argument detected
         }
     }
@@ -464,7 +500,6 @@ int main(int argc, char **argv)
     // 1. parse config file
     if (!ParseConfig(argc, argv, &inputConfig))
     {
-        MRDA_LOG(LOG_ERROR, "parse config failed!");
         return MRDA_STATUS_INVALID_DATA;
     }
 
