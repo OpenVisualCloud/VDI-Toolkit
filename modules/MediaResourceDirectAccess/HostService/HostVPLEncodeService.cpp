@@ -611,6 +611,7 @@ void* HostVPLEncodeService::EncodeThread()
             UnRefInputFrame(frame);
         }
     }
+    return nullptr;
 }
 
 MRDAStatus HostVPLEncodeService::InitMFX()

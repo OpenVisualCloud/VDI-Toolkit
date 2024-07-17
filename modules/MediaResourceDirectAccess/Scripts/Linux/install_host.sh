@@ -49,7 +49,7 @@ build_host()
         mkdir build
     fi
     cd build
-    cmake .. -DCMAKE_PREFIX_PATH=${GRPC_INSTALL_DIR}
+    cmake .. -DCMAKE_PREFIX_PATH=${GRPC_INSTALL_DIR} -DCMAKE_BUILD_TYPE=Release
     make -j$(nproc)
 }
 

@@ -228,7 +228,12 @@ MRDAStatus EncodeTask::CheckMediaParams(const MediaParams *params)
     // check encode params
     if (params->encodeParams.frame_width <= 0 || params->encodeParams.frame_height <= 0
         || params->encodeParams.framerate_den <= 0 || params->encodeParams.gop_size <= 0
-        || params->encodeParams.bit_rate <= 0)
+        || (params->encodeParams.rc_mode == 1 && params->encodeParams.bit_rate <= 0)
+        || (params->encodeParams.rc_mode == 0 && params->encodeParams.qp <= 0)
+        || params->encodeParams.codec_id == StreamCodecID::CodecID_NONE
+        || params->encodeParams.target_usage == TargetUsage::Unknown
+        || params->encodeParams.color_format == ColorFormat::COLOR_FORMAT_NONE
+        || params->encodeParams.codec_profile == CodecProfile::PROFILE_NONE)
     {
         MRDA_LOG(LOG_ERROR, "invalid encode parameters setting!");
         return MRDA_STATUS_INVALID_DATA;

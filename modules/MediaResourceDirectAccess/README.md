@@ -63,10 +63,10 @@ In Windows Guest VM, please refer to "IVSHMEM driver setup" chapter in [How to b
 In Linux Host side:
 ```
 cd Scripts/Linux/build
-sudo ./HostService -addr 127.0.0.1:50050
+sudo ./HostService -addr 127.0.0.1:50051
 ```
 In Windows Guest side:
 ```
 cd Scripts/Windows/app/build/Release
- .\MRDASampleApp.exe --hostSessionAddr 127.0.0.1:50050 -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1  --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --gopRefDist 1 --numRefFrame 1
+ .\MRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051 -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1  --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --gopRefDist 1 --numRefFrame 1
 ```

@@ -387,10 +387,10 @@ void PrintHelp()
     printf("%s", "    [--width frame_width]                    - specifies the frame width. \n");
     printf("%s", "    [--height frame_height]                  - specifies the frame height. \n");
     printf("%s", "    [--colorFormat color_format]             - specifies the color format. option: yuv420, nv12, rgb32 \n");
-    printf("%s", "    [--codecProfile codec_profile]           - specifies the codec profile. option: avc:main, avc:high, hevc:main, hevc:main10 \n");
+    printf("%s", "    [--codecProfile codec_profile]           - specifies the codec profile. option: avc:main, avc:high, hevc:main \n");
     printf("%s", "    [--gopRefDist gop_reference_distance]    - specifies the GOP reference distance. \n");
     printf("%s", "    [--numRefFrame reference_frames_number]  - specifies the number of reference frames. \n");
-    printf("%s", "Examples: ./MRDASampleApp.exe --hostSessionAddr 127.0.0.1:50050 -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1 --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --gopRefDist 1 --numRefFrame 1\n");
+    printf("%s", "Examples: ./MRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051 -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1 --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --gopRefDist 1 --numRefFrame 1\n");
 }
 
 bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
@@ -496,7 +496,7 @@ MRDAStatus CreateMediaParams(InputConfig *inputConfig, MediaParams *mediaParams)
 
 int main(int argc, char **argv)
 {
-    InputConfig inputConfig;
+    InputConfig inputConfig = {};
     // 1. parse config file
     if (!ParseConfig(argc, argv, &inputConfig))
     {

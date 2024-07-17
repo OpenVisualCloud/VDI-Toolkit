@@ -94,7 +94,7 @@ MRDAStatus TaskManagerSession_gRPC::StopTask(const TaskInfo* in_taskInfo, TASKSt
     Status status = m_stub->StopService(&context, in_mrda_taskInfo, &out_mrda_taskStatus);
     if (!status.ok())
     {
-        MRDA_LOG(LOG_ERROR, "Failed to start task!");
+        MRDA_LOG(LOG_ERROR, "Failed to stop task!");
         return MRDA_STATUS_OPERATION_FAIL;
     }
     *out_taskStatus = MakeTaskStatusBack(&out_mrda_taskStatus);
@@ -109,7 +109,7 @@ MRDAStatus TaskManagerSession_gRPC::ResetTask(const TaskInfo* in_taskInfo, TASKS
     Status status = m_stub->ResetService(&context, in_mrda_taskInfo, &out_mrda_taskStatus);
     if (!status.ok())
     {
-        MRDA_LOG(LOG_ERROR, "Failed to start task!");
+        MRDA_LOG(LOG_ERROR, "Failed to reset task!");
         return MRDA_STATUS_OPERATION_FAIL;
     }
     *out_taskStatus = MakeTaskStatusBack(&out_mrda_taskStatus);

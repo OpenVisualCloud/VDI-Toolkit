@@ -231,6 +231,8 @@ MRDAStatus GPUResourceFirstAllocatorStrategy::AllocateResource(TaskInfo *taskInf
             taskInfo->taskDevice = {DeviceType::CPU, 0};
         }
     }
+
+    return MRDA_STATUS_SUCCESS;
 }
 
 ResourceManager::ResourceManager()
