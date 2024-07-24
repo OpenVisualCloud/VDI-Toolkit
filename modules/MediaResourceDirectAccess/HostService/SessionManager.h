@@ -156,6 +156,8 @@ private:
     std::unique_ptr<Server> m_server; //<! gRPC server handle
     std::map<int32_t, std::pair<std::string, std::shared_ptr<HostServiceSession>>> m_hostServices; //!< for each service addr, assign a host service.
     std::list<std::pair<uint32_t, std::string>> m_reservedAddrs; //!< reservced service addrs
+    std::mutex m_addrMutex; //!< mutex for addr
+    std::mutex m_servicesMutex; //!< mutex for services
 };
 
 #endif //_SESSIONMANAGER_H_

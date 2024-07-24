@@ -46,6 +46,7 @@ SessionManagerImpl::SessionManagerImpl(std::string server_addr)
     m_server = nullptr;
     m_hostServices.clear();
     std::string server_base_addr = GetServerBaseAddr(server_addr);
+    std::unique_lock<std::mutex> lock(m_addrMutex);
     for (uint32_t i = 1; i <= PORT_NUM; i++)
     {
         m_reservedAddrs.push_back(std::make_pair(i, server_base_addr + ":" + std::to_string(PORT_BASE + i)));
@@ -55,6 +56,7 @@ SessionManagerImpl::SessionManagerImpl(std::string server_addr)
 std::pair<uint32_t, std::string> SessionManagerImpl::GenerateServiceAddr()
 {
     std::pair<uint32_t, std::string> addr;
+    std::unique_lock<std::mutex> lock(m_addrMutex);
     if (m_reservedAddrs.empty())
     {
         MRDA_LOG(LOG_ERROR, "Failed to generate service address.");
@@ -170,6 +172,7 @@ Status SessionManagerImpl::StartService(ServerContext* context, const MRDA::Task
     hostServiceStartThread.detach();
 
     // update host services
+    std::unique_lock<std::mutex> lock(m_servicesMutex);
     m_hostServices.insert(std::make_pair(serviceAddr.first, std::make_pair(serviceAddr.second, hostServiceSession)));
 
     out_mrdaInfo->set_taskid(serviceAddr.first);
@@ -188,6 +191,7 @@ Status SessionManagerImpl::StopService(ServerContext* context, const MRDA::TaskI
         return Status::CANCELLED;
     }
     // get host service according to task id
+    std::unique_lock<std::mutex> lock(m_servicesMutex);
     auto it = m_hostServices.find(taskInfo->taskid());
     if (it == m_hostServices.end())
     {
@@ -204,6 +208,7 @@ Status SessionManagerImpl::StopService(ServerContext* context, const MRDA::TaskI
         status->set_status(static_cast<int32_t>(TASKStatus::TASK_STATUS_STOPPED));
         // release service and address
         m_hostServices.erase(it);
+        std::unique_lock<std::mutex> lock(m_addrMutex);
         m_reservedAddrs.push_back(std::make_pair(taskId, serviceAddr));
         MRDA_LOG(LOG_INFO, "Stop service! task id : %d", taskId);
         return Status::OK;
