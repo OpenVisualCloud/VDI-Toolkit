@@ -5,9 +5,9 @@ This module contains a library ``MultiDisplayScreenCapture.dll`` and a sample ``
 Run ``MDSC-build.bat`` to automatically fetch the dependencies and build the binary. The results are in ``bin`` folder.
 
 The dependencies of MDSCSample include ``nlohmann\json.hpp`` and ``ffmpeg-6.1.1-full_build-shared`` and they are downloaded in ``MDSCSample\deps`` folder. With these dependencies, open
- ``MultiDisplayScreenCapture.sln`` and the solution can be built witn default config. And C/C++ Processor Definitions "DUMP_RGBA" can be added in "MDSCSample" project properties to build the MDSCSample with BGRA raw data dumping enabled.
+ ``MultiDisplayScreenCapture.sln`` and the solution can be built with default config. And C/C++ Processor Definitions "DUMP_RGBA" can be added in "MDSCSample" project properties to build the MDSCSample with BGRA raw data dumping enabled.
 
- To enable rtsp streaming, ``mediamtx_v1.6.0_windows_amd64`` is downloaded to run rtsp server. And there are also 1 config file ``MDSCSample.conf`` and 3 scripts ``start_rtsp_server.bat``, ``ffplay_streams.bat``, ``start_rtsp_server.bat`` for sample usage.
+ To enable rtsp streaming, ``mediamtx_v1.6.0_windows_amd64`` is downloaded to run rtsp server. And there are also 1 config file ``MDSCSample.conf`` and 3 scripts ``start_rtsp_server.bat``, ``ffplay_streams.bat``, ``start_rtsp_client.bat`` for sample usage.
 
 ## Usage:
 ### 1. Config Params Explanation
@@ -55,19 +55,23 @@ The dependencies of MDSCSample include ``nlohmann\json.hpp`` and ``ffmpeg-6.1.1-
 ### 2. Run binary with scripts
 ```bash
 cd bin
-#1. Edit ``MDSCSample.conf`` for different usage.
-#2. For stream mode, run ``start_rtsp_server.bat`` to start rtsp server first, no need to execute this step for encode file dump mode, and config can be edited in "mediamtx_v1.6.0_windows_amd64\mediamtx.yml".
+# 1. Edit ``MDSCSample.conf`` for different usage.
+
+# 2. For stream mode, run ``start_rtsp_server.bat`` to start rtsp server first, no need to execute this step for encode file dump mode, and config can be edited in "mediamtx_v1.6.0_windows_amd64\mediamtx.yml".
 start_rtsp_server.bat
-#3. Run ``MDSCSample.exe`` to start capture and encode. Finish it with "Ctrl+C" input.
+
+# 3. Run ``MDSCSample.exe`` to start capture and encode. Finish it with "Ctrl+C" input.
 MDSCSample.exe
-#4 For stream mode, run ``start_rtsp_client.bat`` to start rtsp client(ffplay), and %clients_num%, %clients_st_id%, %rtsp-server-ip%, "rtsp-server-port" params can be edited according to the usage and the ffplay window size can be edited in ffplay_streams.bat
+
+# 4. For stream mode, run ``start_rtsp_client.bat`` to start rtsp client(ffplay), and %clients_num%, %clients_st_id%, %rtsp-server-ip%, "rtsp-server-port" params can be edited according to the usage and the ffplay window size can be edited in ffplay_streams.bat
 # e.g. start 2 rtsp clients with url of
 # rtsp://127.0.0.1:8554/screencap0 and
 # rtsp://127.0.0.1:8554/screencap1
-start_rtsp_server.bat
+start_rtsp_client.bat
 # or
 ffplay_streams.bat 2 0 127.0.0.1 8554
-# 5 For encode file dump mode, after step #3 is finished, "%encode-dump-path%*.mp4" can be found in "bin" folder.
+
+# 5. For encode file dump mode, after step #3 is finished, "%encode-dump-path%*.mp4" can be found in "bin" folder.
 ```
 
 ## License
