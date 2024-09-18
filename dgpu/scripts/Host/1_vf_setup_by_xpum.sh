@@ -51,56 +51,68 @@ echo "card id is: $card_id"
 
 # create VFs with xpu-smi or xpumcli tool
 if command -v xpu-smi >/dev/null 2>&1 ; then
-  echo "xpu-smi is installed"
-  xpu-smi vgpu -d "$card_id" -r -y
-  sleep 3
-  xpu-smi vgpu -d "$card_id" -c -n "$vf_count" --lmem "$lmem"000
+    echo "xpu-smi is installed"
+    xpu-smi vgpu -d "$card_id" -r -y
+    sleep 3
+    xpu-smi vgpu -d "$card_id" -c -n "$vf_count" --lmem "$lmem"000
 elif command -v xpumcli >/dev/null 2>&1 ; then
-  echo "xpumcli is installed"
-  xpumcli vgpu -d "$card_id" -r -y
-  sleep 3
-  xpumcli vgpu -d "$card_id" -c -n "$vf_count" --lmem "$lmem"000
+    echo "xpumcli is installed"
+    xpumcli vgpu -d "$card_id" -r -y
+    sleep 3
+    xpumcli vgpu -d "$card_id" -c -n "$vf_count" --lmem "$lmem"000
 else
-  echo "xpu-smi or xpumcli don't installed, please install one of them firstly!"
-  exit
+    echo "xpu-smi or xpumcli don't installed, please install one of them firstly!"
+    exit
 fi
 
 unbind_vfio()
 {
-  echo 0 > /sys/class/drm/card"$card_id"/device/sriov_drivers_autoprobe
-  modprobe vfio_pci
-  echo 1 > /sys/class/drm/card"$card_id"/device/sriov_drivers_autoprobe
+    echo 0 > /sys/class/drm/card"$card_id"/device/sriov_drivers_autoprobe
+    modprobe vfio_pci
+    echo 1 > /sys/class/drm/card"$card_id"/device/sriov_drivers_autoprobe
 
-  PCI_ID=$(grep -i PCI_ID /sys/class/drm/card"$card_id"/device/uevent)
-  PREFIX="PCI_ID=8086:"
-  DEV_ID=${PCI_ID#"$PREFIX"}
-  dev_id=${DEV_ID,,}
-  echo 8086 $dev_id > /sys/bus/pci/drivers/vfio-pci/new_id
+    # unbind vfio driver
+    bus_id=$(udevadm info -q property /dev/dri/card"$card_id" |grep ID_PATH= |cut -d ':' -f 2)
+    # VFID=$(lspci |grep -ie display |sed '1d' |cut -d ' ' -f 1)
+    PCI_BDF=$(lspci |grep -ie display |grep -v 00.0 |grep "$bus_id" |cut -d ' ' -f 1)
 
-  # unbind vfio driver
-  bus_id=$(udevadm info -q property /dev/dri/card"$card_id" |grep ID_PATH= |cut -d ':' -f 2)
-  # VFID=$(lspci |grep -ie display |sed '1d' |cut -d ' ' -f 1)
-  PCI_BDF=$(lspci |grep -ie display |grep -v 00.0 |grep "$bus_id" |cut -d ' ' -f 1)
-  for i in ${PCI_BDF}
-  do
-    #echo 0000:$i > /sys/bus/pci/drivers/pcibak/unbind
-    echo 0000:"$i" > /sys/bus/pci/drivers/intel_vsec/unbind > /dev/null
-  done
+    for i in ${PCI_BDF}
+    do
+        TPREFIX="Kernel driver in use: "
+        KMD_INUSE=$(lspci -s $i -vvv | grep "Kernel driver")
+        if [ -z "$KMD_INUSE" ]
+        then
+            echo "no need to unbind kmd for device $i."
+        else
+            kmd_inuse=$(echo $KMD_INUSE | grep -oP "^$TPREFIX\K.*")
+            if [ "$kmd_inuse" = "vfio-pci" ];then
+                echo "no need to unbind kmd for device $i."
+            else
+                echo "unbinding $kmd_inuse for device $i..."
+                #echo 0000:$i > /sys/bus/pci/drivers/pcibak/unbind
+                echo 0000:"$i" > /sys/bus/pci/drivers/$kmd_inuse/unbind
+            fi
+        fi
+    done
 
-  echo 8086 $dev_id > /sys/bus/pci/drivers/vfio-pci/new_id
-  echo "$vf_count VFs created."
-  ls /dev/vfio/
+    PCI_ID=$(grep -i PCI_ID /sys/class/drm/card"$card_id"/device/uevent)
+    PREFIX="PCI_ID=8086:"
+    DEV_ID=${PCI_ID#"$PREFIX"}
+    dev_id=${DEV_ID,,}
+    echo 8086 $dev_id > /sys/bus/pci/drivers/vfio-pci/new_id
+    echo "$vf_count VFs created."
+    ls /dev/vfio/
 }
 
 if [[ "$OS" =~ .*CentOS.* ]]
 then
-  unbind_vfio
+    unbind_vfio
 
 elif [[ "$OS" =~ .*Rocky.* ]]
 then
-  echo "Done! Rocky Linux 9 don't need unbind vfio driver."
+    echo "Done! Rocky Linux 9 don't need unbind vfio driver."
 
 else
-  echo "No support yet."
+    echo "No support yet."
 fi
 
