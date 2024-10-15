@@ -7,5 +7,5 @@ if not exist "./build" (
     mkdir build
 )
 cd build
-cmake ..
+cmake .. -DENABLE_TRACE=OFF
 cmake --build . --config Release

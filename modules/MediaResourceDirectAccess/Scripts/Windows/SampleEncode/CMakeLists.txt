@@ -10,11 +10,20 @@ IF(WINDOWS_OS)
   ADD_DEFINITIONS("-D_WINDOWS_OS_")
 ENDIF()
 
+OPTION(ENABLE_TRACE
+  "Use trace log"
+  OFF
+)
+
+IF(ENABLE_TRACE)
+  ADD_DEFINITIONS("-D_ENABLE_TRACE_")
+ENDIF()
+
 
 # Project
 project(MRDASampleApp)
 
-AUX_SOURCE_DIRECTORY(../../../sample_app SAMPLE_SRC)
+AUX_SOURCE_DIRECTORY(../../../SampleEncodeApp SAMPLE_SRC)
 
 set(TARGET MRDASampleApp)
 

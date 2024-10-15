@@ -36,10 +36,14 @@
 #include <Windows.h>
 #include <winioctl.h>
 #include <SetupAPI.h>
+#include <tchar.h>
+#include <string>
 #include "Public.h"
 #include "Ivshmem.h"
 
 VDI_NS_BEGIN
+
+#define MAXINTERFACENUM 10
 
 Ivshmem::Ivshmem()
 {
@@ -55,10 +59,9 @@ Ivshmem::~Ivshmem()
 	DeInit();
 }
 
-MRDAStatus Ivshmem::Init()
+MRDAStatus Ivshmem::Init(const UINT32 slot_number)
 {
 	HDEVINFO devInfoSet;
-    static int index = 0;
 	PSP_DEVICE_INTERFACE_DETAIL_DATA devInfDetailData = NULL;
 
 	devInfoSet = SetupDiGetClassDevs(NULL, NULL, NULL, DIGCF_PRESENT | DIGCF_ALLCLASSES | DIGCF_DEVICEINTERFACE);
@@ -66,18 +69,43 @@ MRDAStatus Ivshmem::Init()
 	ZeroMemory(&devInfData, sizeof(SP_DEVICE_INTERFACE_DATA));
 	devInfData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
 
-	if (SetupDiEnumDeviceInterfaces(devInfoSet, NULL, &GUID_DEVINTERFACE_IVSHMEM, index++, &devInfData) == FALSE)
-	{
-		DWORD error = GetLastError();
-		if (error == ERROR_NO_MORE_ITEMS)
+	SP_DEVINFO_DATA devInfoData;
+    ZeroMemory(&devInfoData, sizeof(SP_DEVINFO_DATA));
+    devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+    DWORD index = 0;
+    bool deviceFound = false;
+	while (SetupDiEnumDeviceInfo(devInfoSet, index, &devInfoData)) {
+        DWORD reqSize = 0;
+        DWORD dataType;
+        TCHAR locationPath[256];
+		// ui number match
+		bool ret = SetupDiGetDeviceRegistryProperty(devInfoSet, &devInfoData, SPDRP_LOCATION_PATHS,
+												&dataType, (PBYTE)locationPath, sizeof(locationPath),
+												&reqSize);
+		if (ret)
 		{
-			MRDA_LOG(LOG_ERROR, "Failed to enumerate the device, please check the device!");
-			return MRDA_STATUS_INVALID;
+			if (!checkPCIString(slot_number, locationPath))
+			{
+				index++;
+				continue;
+			}
+			// MRDA_LOG(LOG_INFO, "locationPath %s slot number %d", locationPath, slot_number);
+			int interfaceIndex    = 0;
+			int maxInterfaceCount = MAXINTERFACENUM;
+			// ivshmem guid match to get devInfData
+			while (interfaceIndex < maxInterfaceCount &&
+				   SetupDiEnumDeviceInterfaces(devInfoSet, &devInfoData,
+											   &GUID_DEVINTERFACE_IVSHMEM, interfaceIndex++,
+											   &devInfData)) {
+				// MRDA_LOG(LOG_INFO, "Device interface found.");
+				deviceFound = true;
+				break;
+			}
+			if (deviceFound)
+				break;
 		}
-
-		MRDA_LOG(LOG_ERROR, "Failed to SetupDiEnumDeviceInterfaces");
-		return MRDA_STATUS_INVALID;
-	}
+		index++;
+    }
 
 	DWORD reqSize = 0;
 	SetupDiGetDeviceInterfaceDetail(devInfoSet, &devInfData, NULL, 0, &reqSize, NULL);

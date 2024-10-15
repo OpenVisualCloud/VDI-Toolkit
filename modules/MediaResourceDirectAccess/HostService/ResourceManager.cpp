@@ -42,46 +42,32 @@ VDI_NS_BEGIN
 constexpr float MAX_GPU_USAGE = 100.0f;
 constexpr float MAX_CPU_USAGE = 100.0f;
 
+enum class ACCResourceDriver
+{
+    I915DRIVER = 0,
+    QAT420XXDRIVER,
+    UNKNOWNDRIVER
+};
+
 MRDAStatus ResourceAllocatorStrategy::CheckGPU()
 {
     // check i915 driver
     char buffer[128];
     memset(buffer, 0, sizeof(buffer));
-    FILE* fp = popen("cat /sys/class/drm/renderD*/device/uevent | grep 'DRIVER=i915' | wc -l", "r");
-    if (fp == nullptr)
+    ACCResourceDriver accDriver = ACCResourceDriver::UNKNOWNDRIVER;
+    const char *drivers[2] = {"i915", "420xx"};
+    int32_t gpuCount = 0;
+    for (uint32_t i = 0; i < sizeof(drivers) / sizeof(drivers[0]); i++)
     {
-        MRDA_LOG(LOG_ERROR, "Failed to check GPU device nodes info");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    if(fgets(buffer, sizeof(buffer), fp) == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "Failed to get GPU device nodes info");
-        pclose(fp);
-        return MRDA_STATUS_INVALID_DATA;
-    }
-    pclose(fp);
-
-    int32_t gpuCount = atoi(buffer);
-    if (gpuCount <= 0)
-    {
-        MRDA_LOG(LOG_ERROR, "No GPU device nodes found");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    // get xpu-smi info: gpu usage
-    for (int32_t i = 0; i < gpuCount; i++)
-    {
-        char cmd[128];
-        sprintf(cmd, "xpu-smi dump -m 0 -d %d | head -n 2 | tail -n 1 | awk -F ',' '{print $NF}'", i);
-        fp = popen(cmd, "r");
+        char command[256];
+        snprintf(command, sizeof(command), "cat /sys/class/drm/renderD*/device/uevent | grep 'DRIVER=%s' | wc -l", drivers[i]);
+        FILE* fp = popen(command, "r");
         if (fp == nullptr)
         {
-            MRDA_LOG(LOG_ERROR, "Failed to get GPU device nodes info");
+            MRDA_LOG(LOG_ERROR, "Failed to check GPU device nodes info");
             return MRDA_STATUS_INVALID_DATA;
         }
 
-        memset(buffer, 0, sizeof(buffer));
         if(fgets(buffer, sizeof(buffer), fp) == nullptr)
         {
             MRDA_LOG(LOG_ERROR, "Failed to get GPU device nodes info");
@@ -89,22 +75,67 @@ MRDAStatus ResourceAllocatorStrategy::CheckGPU()
             return MRDA_STATUS_INVALID_DATA;
         }
         pclose(fp);
-        float curGpuUsage = atof(buffer);
-        if (curGpuUsage < 0 || curGpuUsage > 100)
+        gpuCount = atoi(buffer);
+        if (gpuCount > 0)
         {
-            MRDA_LOG(LOG_ERROR, "Invalid GPU usage: %f, cpu id %d", curGpuUsage, i);
-            return MRDA_STATUS_INVALID_DATA;
+            accDriver = static_cast<ACCResourceDriver>(i);
+            break;
         }
+    }
 
-        MRDA_LOG(LOG_INFO, "curGpuUsage %f", curGpuUsage);
-        auto it = std::find_if(m_gpuUsage.begin(), m_gpuUsage.end(), [i](const std::pair<uint32_t, float>& element) {
-        return element.first == i;});
-        if (it != m_gpuUsage.end()) {
-            // MRDA_LOG(LOG_INFO, "In gpu vector UPDATE : %d, %f", it->first, curGpuUsage);
-            it->second = curGpuUsage;
-        } else {
-            // MRDA_LOG(LOG_INFO, "In gpu vector PUSH : %d, %f", i, curGpuUsage);
-            m_gpuUsage.push_back(std::make_pair(i, curGpuUsage));
+    if (gpuCount <= 0)
+    {
+        MRDA_LOG(LOG_ERROR, "No GPU device nodes found");
+        return MRDA_STATUS_INVALID_DATA;
+    }
+
+    // i915 driver - get xpu-smi info: gpu usage
+    if (accDriver == ACCResourceDriver::I915DRIVER)
+    {
+        for (int32_t i = 0; i < gpuCount; i++)
+        {
+            char cmd[128];
+            sprintf(cmd, "xpu-smi dump -m 0 -d %d | head -n 2 | tail -n 1 | awk -F ',' '{print $NF}'", i);
+            FILE *fp = popen(cmd, "r");
+            if (fp == nullptr)
+            {
+                MRDA_LOG(LOG_ERROR, "Failed to get GPU device nodes info");
+                return MRDA_STATUS_INVALID_DATA;
+            }
+
+            memset(buffer, 0, sizeof(buffer));
+            if(fgets(buffer, sizeof(buffer), fp) == nullptr)
+            {
+                MRDA_LOG(LOG_ERROR, "Failed to get GPU device nodes info");
+                pclose(fp);
+                return MRDA_STATUS_INVALID_DATA;
+            }
+            pclose(fp);
+            float curGpuUsage = atof(buffer);
+            if (curGpuUsage < 0 || curGpuUsage > 100)
+            {
+                MRDA_LOG(LOG_ERROR, "Invalid GPU usage: %f, cpu id %d", curGpuUsage, i);
+                return MRDA_STATUS_INVALID_DATA;
+            }
+
+            MRDA_LOG(LOG_INFO, "curGpuUsage %f", curGpuUsage);
+            auto it = std::find_if(m_gpuUsage.begin(), m_gpuUsage.end(), [i](const std::pair<uint32_t, float>& element) {
+            return element.first == i;});
+            if (it != m_gpuUsage.end()) {
+                // MRDA_LOG(LOG_INFO, "In gpu vector UPDATE : %d, %f", it->first, curGpuUsage);
+                it->second = curGpuUsage;
+            } else {
+                // MRDA_LOG(LOG_INFO, "In gpu vector PUSH : %d, %f", i, curGpuUsage);
+                m_gpuUsage.push_back(std::make_pair(i, curGpuUsage));
+            }
+        }
+    }
+    else if (accDriver == ACCResourceDriver::QAT420XXDRIVER)
+    {
+        // TODO: add qat420xx information collection
+        for (int32_t i = 0; i < gpuCount; i++)
+        {
+            m_gpuUsage.push_back(std::make_pair(i, 0.0));
         }
     }
     return MRDA_STATUS_SUCCESS;

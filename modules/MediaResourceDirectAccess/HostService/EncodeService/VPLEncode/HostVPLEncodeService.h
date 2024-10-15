@@ -31,10 +31,12 @@
 //! \date 2024-04-11
 //!
 
+#ifdef _VPL_SUPPORT_
+
 #ifndef _HOSTVPLENCODESERVICE_H_
 #define _HOSTVPLENCODESERVICE_H_
 
-#include "HostEncodeService.h"
+#include "../HostEncodeService.h"
 #include "UtilVPL.h"
 
 #include "vpl/mfx.h"
@@ -43,10 +45,6 @@
 #include "vpl/mfxvideo++.h"
 #include "vpl/mfxdefs.h"
 
-#include <thread>
-#include <mutex>
-#include <list>
-#include <map>
 
 VDI_NS_BEGIN
 
@@ -68,27 +66,6 @@ public:
     //! \return MRDAStatus
     //!
     virtual MRDAStatus Initialize();
-    //!
-    //! \brief Set the Init Params object
-    //!
-    //! \param [in] params
-    //! \return MRDAStatus
-    //!
-    virtual MRDAStatus SetInitParams(MediaParams *params);
-    //!
-    //! \brief Send input data
-    //!
-    //! \param [in] data
-    //! \return MRDAStatus
-    //!
-    virtual MRDAStatus SendInputData(std::shared_ptr<FrameBufferData> data);
-    //!
-    //! \brief Receive output data
-    //!
-    //! \param [out] data
-    //! \return MRDAStatus
-    //!
-    virtual MRDAStatus ReceiveOutputData(std::shared_ptr<FrameBufferData> &data);
 
 private:
     //!
@@ -121,13 +98,6 @@ private:
     MRDAStatus SetMFXEncParams();
 
     //!
-    //! \brief Initialize share memory
-    //!
-    //! \return MRDAStatus
-    //!
-    MRDAStatus InitShm();
-
-    //!
     //! \brief Get the Codec Id object
     //!
     //! \param [in] codecID
@@ -142,44 +112,6 @@ private:
     //! \return uint16_t
     //!
     uint16_t GetCodecProfile(CodecProfile codecProfile);
-
-    //!
-    //! \brief Get the In Shm File Ptr object
-    //!
-    //! \param [in] filePath
-    //! \return MRDAStatus
-    //!
-    MRDAStatus GetInShmFilePtr(std::string filePath);
-
-    //!
-    //! \brief Get the Out Shm File Ptr object
-    //!
-    //! \param [in] filePath
-    //! \return MRDAStatus
-    //!
-    MRDAStatus GetOutShmFilePtr(std::string filePath);
-
-    //!
-    //! \brief Get the Avail Buffer object
-    //!
-    //! \param [out]
-    //! \return MRDAStatus
-    //!
-    MRDAStatus GetAvailBuffer(std::shared_ptr<FrameBufferData>& pFrame);
-
-    //!
-    //! \brief ref frame
-    //!
-    //! \param [in] frame
-    //!
-    void RefOutputFrame(std::shared_ptr<FrameBufferData> frame);
-
-    //!
-    //! \brief unref frame
-    //!
-    //! \param [in] frame
-    //!
-    void UnRefInputFrame(std::shared_ptr<FrameBufferData> frame);
 
     //!
     //! \brief Get the Surface For Encode object
@@ -215,40 +147,14 @@ private:
     //!
     MRDAStatus WriteToOutputShareMemoryBuffer(mfxBitstream* pBS);
 
-    // FIXME: May put output memory pool in host
-    //!
-    //! \brief Get the Available Output Buffer Frame object
-    //!
-    //! \param [in] pFrame
-    //! \return MRDAStatus
-    //!
-    MRDAStatus GetAvailableOutputBufferFrame(std::shared_ptr<FrameBufferData>& pFrame);
-
 private: //MFX related
     mfxLoader m_loader; //<! MFX loader
     mfxSession m_session; //<! MFX video session
     mfxVideoParam m_mfxVideoParams; //<! MFX encode parameters
     mfxBitstream m_bitstream; //<! MFX bitstream
-    std::unique_ptr<MediaParams> m_mediaParams; //<! encode parameters
-
-private: // Memory related
-    int m_inShmFile; //<! input shared memory file path
-    char *m_inShmMem; //<! input shared memory buffer
-    size_t m_inShmSize; //<! input shared memory buffer size
-    int m_outShmFile; //<! output shared memory file path
-    char *m_outShmMem; //<! output shared memory buffer
-    size_t m_outShmSize; //<! output shared memory buffer size
-private:
-    bool m_isStop; //<! stop flag
-    bool m_isEOS; //<! EOS flag
-    uint32_t m_frameNum; //<! frame number
-    std::thread m_encodeThread; //<! encode thread
-    std::mutex m_inMutex; //<! input list mutex
-    std::mutex m_outMutex; //<! output list mutex
-    std::list<std::shared_ptr<FrameBufferData>> m_inFrameBufferDataList; //<! frame buffer data list
-    std::list<std::shared_ptr<FrameBufferData>> m_outFrameBufferDataList; //<! frame buffer data list
-    FILE *debug_file = nullptr;
 };
 
 VDI_NS_END
 #endif // _HOSTVPLENCODESERVICE_H_
+
+#endif // _VPL_SUPPORT_

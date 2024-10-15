@@ -39,6 +39,16 @@ TaskDataSession_gRPC::TaskDataSession_gRPC(std::shared_ptr<TaskInfo> taskInfo)
 {
     std::shared_ptr<Channel> channel = grpc::CreateChannel(taskInfo->ipAddr, grpc::InsecureChannelCredentials());
     m_stub = MRDA::MRDAService::NewStub(channel);
+    m_inputQueue.clear();
+    m_outputQueue.clear();
+}
+
+TaskDataSession_gRPC::~TaskDataSession_gRPC()
+{
+    m_sendThread.join();
+    m_receiveThread.join();
+    m_inputQueue.clear();
+    m_outputQueue.clear();
 }
 
 MRDA::MediaParams TaskDataSession_gRPC::MakeMediaParams(const MediaParams *params)
@@ -69,8 +79,8 @@ MRDA::MediaParams TaskDataSession_gRPC::MakeMediaParams(const MediaParams *param
     mrda_encParams->set_frame_height(params->encodeParams.frame_height);
     mrda_encParams->set_color_format(static_cast<uint32_t>(params->encodeParams.color_format));
     mrda_encParams->set_codec_profile(static_cast<uint32_t>(params->encodeParams.codec_profile));
-    mrda_encParams->set_gop_ref_dist(params->encodeParams.gop_ref_dist);
-    mrda_encParams->set_num_ref_frame(params->encodeParams.num_ref_frame);
+    mrda_encParams->set_max_b_frames(params->encodeParams.max_b_frames);
+    mrda_encParams->set_frame_num(params->encodeParams.frame_num);
 
     return mrda_mediaParams;
 }
@@ -136,6 +146,8 @@ std::shared_ptr<FrameBufferData> TaskDataSession_gRPC::MakeBufferInfoBack(MRDA::
 
 MRDAStatus TaskDataSession_gRPC::SetInitParams(const MediaParams *params)
 {
+    if (params == nullptr) return MRDA_STATUS_INVALID_PARAM;
+    m_frameNum = params->encodeParams.frame_num;
     grpc::ClientContext context;
     MRDA::MediaParams in_mrda_mediaParams = MakeMediaParams(params);
     MRDA::TaskStatus out_mrda_taskStatus;
@@ -149,7 +161,85 @@ MRDAStatus TaskDataSession_gRPC::SetInitParams(const MediaParams *params)
     {
         return MRDA_STATUS_INVALID_STATE;
     }
+    // start send and receive thread
+    m_sendThread = std::thread(&TaskDataSession_gRPC::SendThread, this);
+    m_receiveThread = std::thread(&TaskDataSession_gRPC::ReceiveThread, this);
     return MRDA_STATUS_SUCCESS;
+}
+
+void TaskDataSession_gRPC::SendThread()
+{
+    ClientContext inputContext;     // input client context
+    MRDA::TaskStatus taskStatus;
+    std::shared_ptr<ClientWriter<MRDA::BufferInfo>> writer(m_stub->SendInputData(&inputContext, &taskStatus));
+    bool isSendRunning = true;
+    while (isSendRunning)
+    {
+        std::shared_ptr<FrameBufferData> data = nullptr;
+        {
+        if (m_inputQueue.empty())
+        {
+            Sleep(50);
+            continue;
+        }
+        std::unique_lock<std::mutex> lock(m_inputMutex);
+        data = m_inputQueue.front();
+        m_inputQueue.pop_front();
+        }
+
+        MRDA::BufferInfo in_mrda_bufferInfo = MakeBufferInfo(data);
+#ifdef _ENABLE_TRACE_
+        MRDA_LOG(LOG_INFO, "Encoding trace log: send gRPC frame buffer in VM, pts: %llu", data->Pts());
+#endif
+        if (!writer->Write(in_mrda_bufferInfo))
+        {
+            MRDA_LOG(LOG_ERROR, "Failed to write input data!");
+            return;
+        }
+        if (data->IsEOS())
+        {
+            writer->WritesDone();
+            isSendRunning = false;
+        }
+    }
+    Status status = writer->Finish();
+    if (!status.ok())
+    {
+        MRDA_LOG(LOG_ERROR, "Failed to finish writing input data!");
+        return;
+    }
+    return;
+}
+
+void TaskDataSession_gRPC::ReceiveThread()
+{
+    ClientContext outputContext;                   // output client context
+    MRDA::Pts pts = MakePts(static_cast<uint64_t>(m_frameNum));
+    std::shared_ptr<ClientReader<MRDA::BufferInfo>> reader(m_stub->ReceiveOutputData(&outputContext, pts));
+    int cur_pts = 0;
+    bool isReceiveRunning = true;
+    while (isReceiveRunning)
+    {
+        MRDA::BufferInfo out_mrda_bufferInfo;
+        if (!reader->Read(&out_mrda_bufferInfo))
+        {
+            // MRDA_LOG(LOG_ERROR, "Failed to read buffer info!");
+            isReceiveRunning = false;
+            continue;
+        }
+        std::shared_ptr<FrameBufferData> data = MakeBufferInfoBack(out_mrda_bufferInfo);
+        std::unique_lock<std::mutex> lock(m_outputMutex);
+        m_outputQueue.push_back(data);
+#ifdef _ENABLE_TRACE_
+        MRDA_LOG(LOG_INFO, "Encoding trace log: receive gRPC frame buffer in VM, pts: %llu", data->Pts());
+#endif
+    }
+    Status status = reader->Finish();
+    if (!status.ok())
+    {
+        MRDA_LOG(LOG_ERROR, "Failed to finish reading buffer info!");
+        return;
+    }
 }
 
 MRDAStatus TaskDataSession_gRPC::SendFrame(const std::shared_ptr<FrameBufferData> data)
@@ -159,42 +249,31 @@ MRDAStatus TaskDataSession_gRPC::SendFrame(const std::shared_ptr<FrameBufferData
         MRDA_LOG(LOG_ERROR, "Failed to send input frame!");
         return MRDA_STATUS_INVALID_DATA;
     }
-    grpc::ClientContext context;
-    MRDA::BufferInfo in_mrda_bufferInfo = MakeBufferInfo(data);
-    MRDA::TaskStatus out_mrda_taskStatus;
-    Status status = m_stub->SendInputData(&context, in_mrda_bufferInfo, &out_mrda_taskStatus);
-    if (!status.ok())
-    {
-        MRDA_LOG(LOG_ERROR, "Failed to send input data!");
-        return MRDA_STATUS_OPERATION_FAIL;
-    }
-    if (out_mrda_taskStatus.status() != static_cast<int32_t>(MRDA_STATUS_SUCCESS))
-    {
-        return MRDA_STATUS_INVALID_STATE;
-    }
+    std::unique_lock<std::mutex> lock(m_inputMutex);
+#ifdef _ENABLE_TRACE_
+    MRDA_LOG(LOG_INFO, "Encoding trace log: push back frame in input queue in task data session, pts: %llu", data->Pts());
+#endif
+    m_inputQueue.push_back(data);
     return MRDA_STATUS_SUCCESS;
+
 }
 
 MRDAStatus TaskDataSession_gRPC::ReceiveFrame(std::shared_ptr<FrameBufferData> &data)
 {
-    grpc::ClientContext context;
-    static int cur_pts = 0;
-    MRDA::Pts in_pts = MakePts(cur_pts);
-    MRDA::BufferInfo out_mrda_bufferInfo;
-    Status status = m_stub->ReceiveOutputData(&context, in_pts, &out_mrda_bufferInfo);
-    if (status.error_code() == grpc::StatusCode::UNAVAILABLE)
     {
-        // MRDA_LOG(LOG_INFO, "Not enough output data!");
-        return MRDA_STATUS_NOT_ENOUGH_DATA;
+    while (m_outputQueue.empty())
+    {
+        Sleep(50);
+        continue;
     }
-    else if (!status.ok())
-    {
-        MRDA_LOG(LOG_ERROR, "Failed to receive output data!");
-        return MRDA_STATUS_OPERATION_FAIL;
+    std::unique_lock<std::mutex> lock(m_outputMutex);
+    data = m_outputQueue.front();
+    m_outputQueue.pop_front();
+#ifdef _ENABLE_TRACE_
+    MRDA_LOG(LOG_INFO, "Encoding trace log: pop front frame in output queue in task data session, pts: %llu", data->Pts());
+#endif
     }
 
-    data = MakeBufferInfoBack(out_mrda_bufferInfo);
-    cur_pts++;
     return MRDA_STATUS_SUCCESS;
 }
 

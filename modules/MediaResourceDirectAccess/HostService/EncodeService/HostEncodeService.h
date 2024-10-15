@@ -34,7 +34,12 @@
 #ifndef _HOSTENCODESERVICE_H_
 #define _HOSTENCODESERVICE_H_
 
-#include "HostService.h"
+#include "../HostService.h"
+#include <thread>
+#include <mutex>
+#include <list>
+#include <map>
+#include <unistd.h>
 
 VDI_NS_BEGIN
 
@@ -44,11 +49,11 @@ public:
     //!
     //! \brief Construct a new Host Encode Service object
     //!
-    HostEncodeService() = default;
+    HostEncodeService();
     //!
     //! \brief Destroy the Host Encode Service object
     //!
-    virtual ~HostEncodeService() = default;
+    virtual ~HostEncodeService();
     //!
     //! \brief Initialize encoder service
     //!
@@ -61,22 +66,56 @@ public:
     //! \param [in] params
     //! \return MRDAStatus
     //!
-    virtual MRDAStatus SetInitParams(MediaParams *params) = 0;
+    virtual MRDAStatus SetInitParams(MediaParams *params) override;
     //!
     //! \brief Send input data
     //!
     //! \param [in] data
     //! \return MRDAStatus
     //!
-    virtual MRDAStatus SendInputData(std::shared_ptr<FrameBufferData> data) = 0;
+    virtual MRDAStatus SendInputData(std::shared_ptr<FrameBufferData> data) override;
     //!
     //! \brief Receive output data
     //!
     //! \param [out] data
     //! \return MRDAStatus
     //!
-    virtual MRDAStatus ReceiveOutputData(std::shared_ptr<FrameBufferData> &data) = 0;
+    virtual MRDAStatus ReceiveOutputData(std::shared_ptr<FrameBufferData> &data) override;
 
+protected:
+    //!
+    //! \brief Initialize share memory
+    //!
+    //! \return MRDAStatus
+    //!
+    MRDAStatus InitShm();
+    //!
+    //! \brief Get the Avail Buffer object
+    //!
+    //! \param [out]
+    //! \return MRDAStatus
+    //!
+    MRDAStatus GetAvailBuffer(std::shared_ptr<FrameBufferData>& pFrame);
+    // FIXME: May put output memory pool in host
+    //!
+    //! \brief Get the Available Output Buffer Frame object
+    //!
+    //! \param [in] pFrame
+    //! \return MRDAStatus
+    //!
+    MRDAStatus GetAvailableOutputBufferFrame(std::shared_ptr<FrameBufferData>& pFrame);
+
+protected:
+    // Encode thread related
+    bool m_isStop; //<! stop flag
+    bool m_isEOS; //<! EOS flag
+    uint32_t m_frameNum; //<! frame number
+    std::mutex m_inMutex; //<! input list mutex
+    std::mutex m_outMutex; //<! output list mutex
+    std::list<std::shared_ptr<FrameBufferData>> m_inFrameBufferDataList; //<! frame buffer data list
+    std::list<std::shared_ptr<FrameBufferData>> m_outFrameBufferDataList; //<! frame buffer data list
+    std::thread m_encodeThread; //<! encode thread
+    FILE *debug_file = nullptr;
 };
 
 VDI_NS_END

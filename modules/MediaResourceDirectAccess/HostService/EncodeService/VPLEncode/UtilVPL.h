@@ -31,10 +31,12 @@
 //! \date 2024-04-22
 //!
 
+#ifdef _VPL_SUPPORT_
+
 #ifndef _UTIL_VPL_H_
 #define _UTIL_VPL_H_
 
-#include "../utils/common.h"
+#include "../../../utils/common.h"
 #include "vpl/mfx.h"
 #include "vpl/mfxstructures.h"
 #include "vpl/mfxvideo.h"
@@ -57,3 +59,5 @@ VDI_NS_BEGIN
 
 VDI_NS_END
 #endif //_UTIL_VPL_H_
+
+#endif //_VPL_SUPPORT_

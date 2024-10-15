@@ -26,55 +26,29 @@
  */
 
 //!
-//! \file DataSender.cpp
-//! \brief
-//! \date 2024-04-07
+//! \file UtilFFmpeg.h
+//! \brief uitility FFmpeg functions
+//! \date 2024-07-01
 //!
 
-#include "DataSender.h"
-#include "TaskDataSession_gRPC.h"
-#include "TaskDataSession.h"
+#ifdef _FFMPEG_SUPPORT_
+
+#ifndef _UTIL_FFMPEG_H_
+#define _UTIL_FFMPEG_H_
+
+#include "../../../utils/common.h"
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavutil/pixdesc.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/opt.h>
+#include <libswscale/swscale.h>
+}
 
 VDI_NS_BEGIN
 
-DataSender::DataSender()
-    :m_taskDataSession(nullptr){}
-
-DataSender::DataSender(std::shared_ptr<TaskDataSession> taskDataSession)
-    :m_taskDataSession(taskDataSession){}
-
-MRDAStatus DataSender::SetInitParams(const MediaParams *params)
-{
-    if (params == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "media params invalid!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    if (m_taskDataSession == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "Task data session is not initialized");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    return m_taskDataSession->SetInitParams(params);
-}
-
-MRDAStatus DataSender::SendFrame(const std::shared_ptr<FrameBufferData> data)
-{
-    if (data == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "Frame buffer data is invalid!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    if (m_taskDataSession == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "Task data session is not initialized");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    return m_taskDataSession->SendFrame(data);
-}
 
 VDI_NS_END
+#endif //_UTIL_FFMPEG_H_
+
+#endif //_FFMPEG_SUPPORT_

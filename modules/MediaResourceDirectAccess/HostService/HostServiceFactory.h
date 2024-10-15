@@ -35,8 +35,12 @@
 #define _HOSTSERVICEFACTORY_H_
 
 #include "HostService.h"
-#include "HostVPLEncodeService.h"
-
+#ifdef _VPL_SUPPORT_
+#include "EncodeService/VPLEncode/HostVPLEncodeService.h"
+#endif
+#ifdef _FFMPEG_SUPPORT_
+#include "EncodeService/FFmpegEncode/HostFFmpegEncodeService.h"
+#endif
 #include "../protos/MRDAServiceManager.grpc.pb.h"
 
 #include <memory>
@@ -63,9 +67,24 @@ public:
     inline static std::shared_ptr<HostService> CreateHostService(const MRDA::TaskInfo *info)
     {
         if (info->devicetype() == static_cast<int32_t>(DeviceType::GPU)
-            && info->tasktype() == static_cast<int32_t>(TASKTYPE::taskEncode))
+            && info->tasktype() == static_cast<int32_t>(TASKTYPE::taskFFmpegEncode))
         {
+#ifdef _FFMPEG_SUPPORT_
+            return std::make_shared<HostFFmpegEncodeService>();
+#else
+            MRDA_LOG(LOG_ERROR, "FFmpeg is not supported");
+            return nullptr;
+#endif
+        }
+        else if (info->devicetype() == static_cast<int32_t>(DeviceType::GPU)
+            && info->tasktype() == static_cast<int32_t>(TASKTYPE::taskOneVPLEncode))
+        {
+#ifdef _VPL_SUPPORT_
             return std::make_shared<HostVPLEncodeService>();
+#else
+            MRDA_LOG(LOG_ERROR, "VPL is not supported");
+            return nullptr;
+#endif
         }
         else if (info->devicetype() == static_cast<int32_t>(DeviceType::GPU)
             && info->tasktype() == static_cast<int32_t>(TASKTYPE::taskDecode))

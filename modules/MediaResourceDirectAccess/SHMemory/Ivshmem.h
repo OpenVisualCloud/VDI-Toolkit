@@ -55,10 +55,12 @@ public:
     //!
     //! \brief Initialize ivshmem
     //!
+    //! \param [in] slot_number
+    //!             memory device slot number
     //! \return MRDAStatus
     //!         MRDA_STATUS_SUCCESS if success, else fail
     //!
-	MRDAStatus Init();
+	MRDAStatus Init(const UINT32 slot_number);
     //!
     //! \brief Deinitialize ivshmem
     //!
@@ -109,6 +111,28 @@ public:
     //!         the memory offset
     //!
 	inline UINT64 GetOffset() { return m_offset; }
+
+private:
+    //!
+    //! \brief Check if the location path is the expected PCI string
+    //! \param [in] slot_number
+    //!             memory device slot number
+    //! \param [in] location_path
+    //!             location path
+    //! \return bool
+    //!         true if the location path is the expected PCI string, else false
+    //! \note  This function is used to check if the location path is the expected PCI string
+    //!
+    inline bool checkPCIString(int slot_number, const char* location_path)
+    {
+        char expectedString[256];
+        sprintf(expectedString, "PCIROOT(0)#PCI(%d00)", slot_number);
+        if (strcmp(expectedString, location_path) == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    };
 
 private:
 	PVOID m_memory;  //!< mmap pointer, shared memory entry point

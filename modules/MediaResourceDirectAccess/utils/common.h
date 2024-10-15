@@ -67,12 +67,13 @@ constexpr int LOG_ERROR = 2;
 #include <stdbool.h>
 #define MRDA_LOG(level, format, ...) \
     do { \
-        time_t now; \
-        time(&now); \
-        struct tm *local_time = localtime(&now); \
+        struct timespec now; \
+        clock_gettime(CLOCK_REALTIME, &now); \
+        struct tm local_time; \
+        localtime_r(&now.tv_sec, &local_time); \
         char time_str[20]; \
-        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", local_time); \
-        fprintf(stderr, "[%s.%03ld:%s:%d] ", time_str, (long int)now % 1000, __FILE__, __LINE__); \
+        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &local_time); \
+        fprintf(stderr, "[%s.%03ld:%s:%d] ", time_str, (long int)now.tv_nsec / 1000000, __FILE__, __LINE__); \
         if (level == LOG_INFO) { \
             fprintf(stderr, "INFO: "); \
         } else if (level == LOG_WARNING) { \

@@ -46,16 +46,13 @@ public:
     //!
     DataReceiver();
     //!
+    //! \brief Construct a new Data Sender object
+    //!
+    DataReceiver(std::shared_ptr<TaskDataSession> taskDataSession);
+    //!
     //! \brief Destroy the Data Receiver object
     //!
     virtual ~DataReceiver() = default;
-    //!
-    //! \brief Initialize with task info
-    //!
-    //! \param [in] taskInfo
-    //! \return MRDAStatus
-    //!
-    MRDAStatus Initialize(const std::shared_ptr<TaskInfo> taskInfo);
     //!
     //! \brief Receive the data from the remote host
     //!
@@ -67,8 +64,7 @@ public:
     MRDAStatus ReceiveFrame(std::shared_ptr<FrameBufferData> &data);
 
 private:
-    std::shared_ptr<TaskInfo> m_taskInfo; //!< task info
-    std::unique_ptr<TaskDataSession> m_taskDataSession; //!< task data session
+    std::shared_ptr<TaskDataSession> m_taskDataSession; //!< task data session
 };
 
 VDI_NS_END

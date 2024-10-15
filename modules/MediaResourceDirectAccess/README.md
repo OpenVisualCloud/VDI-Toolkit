@@ -20,11 +20,13 @@ The software diagram is shown in Figure 1.
 - grpc == v1.62.0
 - cmake >=3.0
 - oneVPL
+- ffmpeg
 
 ### How to build MRDA Host Service
 ```
 cd Scripts/Linux
 ./install_host.sh y # build with external library, input y; only build MRDA host service, input n
+# encoder option can be set in install_host.sh with -DVPL_SUPPORT -DFFMPEG_SUPPORT
 ```
 
 ## Guest build
@@ -43,7 +45,7 @@ cd Scripts/Windows/lib
 
 ### How to build MRDA Guest Sample
 ```
-cd Scripts/Windows/app
+cd Scripts/Windows/SampleEncode
 ./WinBuild.bat
 ```
 
@@ -67,6 +69,6 @@ sudo ./HostService -addr 127.0.0.1:50051
 ```
 In Windows Guest side:
 ```
-cd Scripts/Windows/app/build/Release
- .\MRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051 -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1  --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --gopRefDist 1 --numRefFrame 1
+cd Scripts/Windows/SampleEncode/build/Release
+ .\MRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051 -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --inDevSlotNumber 11 --outDevSlotNumber 12 --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1  --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --maxBFrames 0 --encodeType oneVPL
 ```

@@ -43,7 +43,8 @@ TaskManager::TaskManager():
     m_outMemoryPool(nullptr),
     m_taskManagerSession(nullptr),
     m_dataSender(nullptr),
-    m_dataReceiver(nullptr)
+    m_dataReceiver(nullptr),
+    m_taskDataSession(nullptr)
 {
 
 }
@@ -78,30 +79,26 @@ MRDAStatus TaskManager::Initialize(const TaskInfo *taskInfo, const ExternalConfi
 
     m_taskInfo = std::make_shared<TaskInfo>(updatedTaskInfo);
 
-    // 2. init data sender with given task info
-    m_dataSender = std::make_shared<DataSender>();
+    // 2. init data sender with given task data session
+    m_taskDataSession = std::make_shared<TaskDataSession_gRPC>(m_taskInfo);
+    if (m_taskDataSession == nullptr)
+    {
+        MRDA_LOG(LOG_ERROR, "failed to create task data session");
+        return MRDA_STATUS_INVALID_DATA;
+    }
+    m_dataSender = std::make_shared<DataSender>(m_taskDataSession);
     if (m_dataSender == nullptr)
     {
         MRDA_LOG(LOG_ERROR, "failed to create data sender");
         return MRDA_STATUS_INVALID_DATA;
     }
-    if (MRDA_STATUS_SUCCESS != m_dataSender->Initialize(m_taskInfo))
-    {
-        MRDA_LOG(LOG_ERROR, "failed to initialize data sender");
-        return MRDA_STATUS_OPERATION_FAIL;
-    }
 
-    // 3. init data receiver with given task info
-    m_dataReceiver = std::make_shared<DataReceiver>();
+    // 3. init data receiver with given task data session
+    m_dataReceiver = std::make_shared<DataReceiver>(m_taskDataSession);
     if (m_dataReceiver == nullptr)
     {
         MRDA_LOG(LOG_ERROR, "failed to create data receiver");
         return MRDA_STATUS_INVALID_DATA;
-    }
-    if (MRDA_STATUS_SUCCESS != m_dataReceiver->Initialize(m_taskInfo))
-    {
-        MRDA_LOG(LOG_ERROR, "failed to initialize data receiver");
-        return MRDA_STATUS_OPERATION_FAIL;
     }
 
     return MRDA_STATUS_SUCCESS;
@@ -130,7 +127,7 @@ MRDAStatus TaskManager::SetInitParams(const MediaParams *params)
         return MRDA_STATUS_INVALID_DATA;
     }
 
-    if (MRDA_STATUS_SUCCESS != m_inMemoryPool->InitBufferPool(m_shareMemInfo->bufferNum, m_shareMemInfo->bufferSize))
+    if (MRDA_STATUS_SUCCESS != m_inMemoryPool->InitBufferPool(m_shareMemInfo->bufferNum, m_shareMemInfo->bufferSize, m_shareMemInfo->in_mem_dev_slot_number))
     {
         MRDA_LOG(LOG_ERROR, "failed to create in memory pool");
         return MRDA_STATUS_INVALID_DATA;
@@ -149,7 +146,7 @@ MRDAStatus TaskManager::SetInitParams(const MediaParams *params)
         return MRDA_STATUS_INVALID_DATA;
     }
 
-    if (MRDA_STATUS_SUCCESS != m_outMemoryPool->InitBufferPool(m_shareMemInfo->bufferNum, m_shareMemInfo->bufferSize))
+    if (MRDA_STATUS_SUCCESS != m_outMemoryPool->InitBufferPool(m_shareMemInfo->bufferNum, m_shareMemInfo->bufferSize,m_shareMemInfo->out_mem_dev_slot_number))
     {
         MRDA_LOG(LOG_ERROR, "failed to create out memory pool");
         return MRDA_STATUS_INVALID_DATA;
@@ -223,7 +220,10 @@ MRDAStatus TaskManager::GetOneInputBuffer(std::shared_ptr<FrameBufferData> &data
     }
 
     if (m_encodeParams == nullptr) return MRDA_STATUS_INVALID_DATA;
-    if (m_taskInfo != nullptr && m_taskInfo->taskType == TASKTYPE::taskEncode)
+    if (m_taskInfo != nullptr &&
+        (m_taskInfo->taskType == TASKTYPE::taskFFmpegEncode
+        || m_taskInfo->taskType == TASKTYPE::taskOneVPLEncode)
+       )
         buffer->SetStreamType(InputStreamType::RAW);
     else
         buffer->SetStreamType(InputStreamType::UNKNOWN);

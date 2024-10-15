@@ -31,12 +31,14 @@
 //! \date 2024-04-11
 //!
 
+#ifdef _VPL_SUPPORT_
+
 #include "HostVPLEncodeService.h"
 #include <fstream>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
+// #include <sys/mman.h>
+// #include <sys/stat.h>
+// #include <fcntl.h>
+// #include <unistd.h>
 #include <iostream>
 
 #include <cstring>
@@ -45,18 +47,6 @@ VDI_NS_BEGIN
 
 HostVPLEncodeService::HostVPLEncodeService()
 {
-    m_mediaParams = nullptr;
-    m_inShmFile = -1;
-    m_inShmMem = nullptr;
-    m_inShmSize = 0;
-    m_outShmFile = -1;
-    m_outShmMem = nullptr;
-    m_outShmSize = 0;
-    m_isStop = false;
-    m_isEOS = false;
-    m_frameNum = 0;
-    m_inFrameBufferDataList.clear();
-    m_outFrameBufferDataList.clear();
     debug_file = fopen("out_host.hevc", "wb");
 }
 
@@ -71,13 +61,9 @@ HostVPLEncodeService::~HostVPLEncodeService()
     {
         MFXUnload(m_loader);
     }
-    m_inFrameBufferDataList.clear();
-    m_outFrameBufferDataList.clear();
+
     m_encodeThread.join();
-    if (m_inShmMem != MAP_FAILED) munmap(m_inShmMem, m_inShmSize);
-    if (m_outShmMem != MAP_FAILED) munmap(m_outShmMem, m_outShmSize);
-    if (m_inShmFile >= 0) close(m_inShmFile);
-    if (m_outShmFile >= 0) close(m_outShmFile);
+
     fclose(debug_file);
 }
 
@@ -109,147 +95,6 @@ MRDAStatus HostVPLEncodeService::Initialize()
     }
     // start encode thread
     m_encodeThread = std::thread(&HostVPLEncodeService::EncodeThread, this);
-    return MRDA_STATUS_SUCCESS;
-}
-
-MRDAStatus HostVPLEncodeService::SetInitParams(MediaParams *params)
-{
-    if (params == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "Media params invalid!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-    m_mediaParams = std::make_unique<MediaParams>();
-    m_mediaParams->encodeParams = params->encodeParams;
-    m_mediaParams->shareMemoryInfo = params->shareMemoryInfo;
-
-    return MRDA_STATUS_SUCCESS;
-}
-
-MRDAStatus HostVPLEncodeService::InitShm()
-{
-    if (m_mediaParams == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "Media params invalid!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    ShareMemoryInfo shmInfo = m_mediaParams->shareMemoryInfo;
-    std::string in_mem_path = shmInfo.in_mem_dev_path;
-    std::string out_mem_path = shmInfo.out_mem_dev_path;
-    if (MRDA_STATUS_SUCCESS != GetInShmFilePtr(in_mem_path))
-    {
-        MRDA_LOG(LOG_ERROR, "Failed to get in shm file ptr!");
-        return MRDA_STATUS_OPERATION_FAIL;
-    }
-    if (MRDA_STATUS_SUCCESS != GetOutShmFilePtr(out_mem_path))
-    {
-        MRDA_LOG(LOG_ERROR, "Failed to get out shm file ptr!");
-        return MRDA_STATUS_OPERATION_FAIL;
-    }
-
-    return MRDA_STATUS_SUCCESS;
-}
-
-MRDAStatus HostVPLEncodeService::GetInShmFilePtr(std::string filePath)
-{
-    if (filePath.empty())
-    {
-        MRDA_LOG(LOG_ERROR, "File path invalid!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    std::ifstream file(filePath, std::ios::binary);
-
-    file.seekg(0, std::ios::end);
-    size_t fileSize = file.tellg();
-    m_inShmSize = fileSize;
-    file.seekg(0, std::ios::beg);
-
-    file.close();
-
-    if (m_mediaParams != nullptr && m_mediaParams->shareMemoryInfo.totalMemorySize > m_inShmSize)
-    {
-        MRDA_LOG(LOG_ERROR, "shm size invalid!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    m_inShmFile = open(filePath.c_str(), O_RDWR);
-
-    void* mapped_memory = mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, m_inShmFile, 0);
-
-    if (mapped_memory == MAP_FAILED) {
-        MRDA_LOG(LOG_ERROR, "Failed to map the file into memory!");
-        return MRDA_STATUS_OPERATION_FAIL;
-    }
-
-    m_inShmMem = (char*)mapped_memory;
-
-    return MRDA_STATUS_SUCCESS;
-}
-
-MRDAStatus HostVPLEncodeService::GetOutShmFilePtr(std::string filePath)
-{
-    if (filePath.empty())
-    {
-        MRDA_LOG(LOG_ERROR, "File path invalid!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    std::ifstream file(filePath, std::ios::binary);
-
-    file.seekg(0, std::ios::end);
-    size_t fileSize = file.tellg();
-    m_outShmSize = fileSize;
-    file.seekg(0, std::ios::beg);
-
-    file.close();
-
-    if (m_mediaParams != nullptr && m_mediaParams->shareMemoryInfo.totalMemorySize > m_outShmSize)
-    {
-        MRDA_LOG(LOG_ERROR, "shm size invalid!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-
-    m_outShmFile = open(filePath.c_str(), O_RDWR);
-
-    void* mapped_memory = mmap(NULL, fileSize, PROT_READ | PROT_WRITE, MAP_SHARED, m_outShmFile, 0);
-
-    if (mapped_memory == MAP_FAILED) {
-        MRDA_LOG(LOG_ERROR, "Failed to map the file into memory!");
-        return MRDA_STATUS_OPERATION_FAIL;
-    }
-
-    m_outShmMem = (char*)mapped_memory;
-
-    return MRDA_STATUS_SUCCESS;
-}
-
-
-MRDAStatus HostVPLEncodeService::SendInputData(std::shared_ptr<FrameBufferData> data)
-{
-    std::unique_lock<std::mutex> lock(m_inMutex);
-    if (data == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "Input data is null!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-    m_inFrameBufferDataList.push_back(data);
-    // MRDA_LOG(LOG_INFO, "Input frame data size is %d", m_inFrameBufferDataList.size());
-    return MRDA_STATUS_SUCCESS;
-}
-
-MRDAStatus HostVPLEncodeService::ReceiveOutputData(std::shared_ptr<FrameBufferData> &data)
-{
-    std::unique_lock<std::mutex> lock(m_outMutex);
-    if (m_outFrameBufferDataList.empty())
-    {
-        // MRDA_LOG(LOG_INFO, "Output data list is empty!");
-        return MRDA_STATUS_NOT_ENOUGH_DATA;
-    }
-    data = m_outFrameBufferDataList.front();
-    m_outFrameBufferDataList.pop_front();
-    // MRDA_LOG(LOG_INFO, "Output frame data size is %d, pts %llu", m_outFrameBufferDataList.size(), data->Pts());
     return MRDA_STATUS_SUCCESS;
 }
 
@@ -416,83 +261,6 @@ MRDAStatus HostVPLEncodeService::WriteToOutputShareMemoryBuffer(mfxBitstream* pB
     // MRDA_LOG(LOG_INFO, "Push back output buffer at pts %llu", data->Pts());
 
     return MRDA_STATUS_SUCCESS;
-}
-
-MRDAStatus HostVPLEncodeService::GetAvailableOutputBufferFrame(std::shared_ptr<FrameBufferData>& pFrame)
-{
-    // check an available buffer
-    bool isBufferAvailable = false;
-    while (!isBufferAvailable)
-    {
-        if (MRDA_STATUS_SUCCESS != GetAvailBuffer(pFrame))
-        {
-            // MRDA_LOG(LOG_INFO, "GetAvailBuffer failed\n");
-            usleep(5 * 1000);
-            continue;
-        }
-        isBufferAvailable = true;
-    }
-    return MRDA_STATUS_SUCCESS;
-}
-
-MRDAStatus HostVPLEncodeService::GetAvailBuffer(std::shared_ptr<FrameBufferData>& pFrame)
-{
-    if (m_mediaParams == nullptr || m_outShmMem == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "Media params or out shm mem invalid!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-    uint32_t bufferNum = m_mediaParams->shareMemoryInfo.bufferNum;
-    uint64_t bufferSize = m_mediaParams->shareMemoryInfo.bufferSize;
-    for (uint32_t i = 1; i <= bufferNum; i++)
-    {
-        size_t state_offset = (i - 1) * bufferSize;
-        BufferState state = BufferState::BUFFER_STATE_NONE;
-        memcpy(&state, m_outShmMem + state_offset, sizeof(uint32_t));
-        // find an available frame
-        if (state == BufferState::BUFFER_STATE_IDLE)
-        {
-            std::shared_ptr<MemoryBuffer> memBuffer = std::make_shared<MemoryBuffer>();
-            memBuffer->SetBufId(i);
-            memBuffer->SetMemOffset(state_offset + sizeof(uint32_t));
-            memBuffer->SetStateOffset(state_offset);
-            memBuffer->SetBufPtr(nullptr);
-            memBuffer->SetSize(bufferSize);
-            memBuffer->SetOccupiedSize(0);
-            memBuffer->SetState(state);
-            pFrame = std::make_shared<FrameBufferData>();
-            pFrame->SetWidth(m_mediaParams->encodeParams.frame_width);
-            pFrame->SetHeight(m_mediaParams->encodeParams.frame_height);
-            pFrame->SetStreamType(InputStreamType::ENCODED);
-            pFrame->SetPts(m_frameNum);
-            pFrame->SetEOS(m_isEOS);
-            pFrame->SetMemBuffer(memBuffer);
-            return MRDA_STATUS_SUCCESS;
-        }
-    }
-    return MRDA_STATUS_INVALID_DATA;
-}
-
-void HostVPLEncodeService::RefOutputFrame(std::shared_ptr<FrameBufferData> pFrame)
-{
-    if (pFrame != nullptr && pFrame->MemBuffer() != nullptr)
-    {
-        pFrame->MemBuffer()->SetState(BufferState::BUFFER_STATE_BUSY);
-        uint32_t state = static_cast<uint32_t>(pFrame->MemBuffer()->State());
-        memcpy(m_outShmMem + pFrame->MemBuffer()->StateOffset(), &state, sizeof(uint32_t));
-        // MRDA_LOG(LOG_INFO, "Ref output buffer at pts %llu, buffer id %d", pFrame->Pts(), pFrame->MemBuffer()->BufId());
-    }
-}
-
-void HostVPLEncodeService::UnRefInputFrame(std::shared_ptr<FrameBufferData> pFrame)
-{
-    if (pFrame != nullptr && pFrame->MemBuffer() != nullptr)
-    {
-        pFrame->MemBuffer()->SetState(BufferState::BUFFER_STATE_IDLE);
-        uint32_t state = static_cast<uint32_t>(pFrame->MemBuffer()->State());
-        memcpy(m_inShmMem + pFrame->MemBuffer()->StateOffset(), &state, sizeof(uint32_t));
-        // MRDA_LOG(LOG_INFO, "UnRef input buffer at pts %llu, buffer id %d", pFrame->Pts(), pFrame->MemBuffer()->BufId());
-    }
 }
 
 MRDAStatus HostVPLEncodeService::EncodeOneFrame(mfxFrameSurface1* pSurface)
@@ -774,7 +542,7 @@ MRDAStatus HostVPLEncodeService::SetMFXEncParams()
         m_mfxVideoParams.mfx.FrameInfo.FourCC = MFX_FOURCC_RGB4;
         m_mfxVideoParams.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV444;
     }
-    else if (encodeParams.color_format == ColorFormat::COLOR_FORMAT_YUV420)
+    else if (encodeParams.color_format == ColorFormat::COLOR_FORMAT_YUV420P)
     {
         m_mfxVideoParams.mfx.FrameInfo.FourCC = MFX_FOURCC_I420;
         m_mfxVideoParams.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
@@ -788,11 +556,26 @@ MRDAStatus HostVPLEncodeService::SetMFXEncParams()
     // codec profile
     m_mfxVideoParams.mfx.CodecProfile = GetCodecProfile(encodeParams.codec_profile);
 
-    // gop ref distance
-    m_mfxVideoParams.mfx.GopRefDist = encodeParams.gop_ref_dist;
-
-    // number of ref frame
-    m_mfxVideoParams.mfx.NumRefFrame = encodeParams.num_ref_frame;
+    if (encodeParams.max_b_frames == 0)
+    {
+        m_mfxVideoParams.mfx.GopRefDist = 1;
+        m_mfxVideoParams.mfx.NumRefFrame = 1;
+    }
+    else if (encodeParams.max_b_frames == 1)
+    {
+        m_mfxVideoParams.mfx.GopRefDist = 2;
+        m_mfxVideoParams.mfx.NumRefFrame = 2;
+    }
+    else if (encodeParams.max_b_frames == 2)
+    {
+        m_mfxVideoParams.mfx.GopRefDist = 3;
+        m_mfxVideoParams.mfx.NumRefFrame = 2;
+    }
+    else
+    {
+        MRDA_LOG(LOG_ERROR, "Invalid max_b_frames");
+        return MRDA_STATUS_INVALID_DATA;
+    }
 
     return MRDA_STATUS_SUCCESS;
 }
@@ -852,3 +635,5 @@ uint16_t HostVPLEncodeService::GetCodecProfile(CodecProfile codecProfile)
 }
 
 VDI_NS_END
+
+#endif // _VPL_SUPPORT_

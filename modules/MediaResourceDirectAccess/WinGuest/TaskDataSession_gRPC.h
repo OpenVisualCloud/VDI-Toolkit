@@ -51,6 +51,10 @@ using grpc::ClientWriter;
 using grpc::Status;
 using grpc::Channel;
 
+#include <thread>
+#include <list>
+#include <mutex>
+
 VDI_NS_BEGIN
 
 class TaskDataSession_gRPC : public TaskDataSession
@@ -71,7 +75,7 @@ public:
     //!
     //! \brief Destroy the TaskDataSession_gRPC object
     //!
-    virtual ~TaskDataSession_gRPC() = default;
+    virtual ~TaskDataSession_gRPC();
 
     //!
     //! \brief Initialize the Task Data Session object
@@ -141,8 +145,27 @@ private:
     //!
     std::shared_ptr<FrameBufferData> MakeBufferInfoBack(MRDA::BufferInfo info);
 
+    //!
+    //! \brief Send data thread
+    //! \return void
+    //!
+    void SendThread();
+
+    //!
+    //! \brief Receive data thread
+    //! \return void
+    //!
+    void ReceiveThread();
+
 private:
-    std::unique_ptr<MRDA::MRDAService::Stub> m_stub; // client gRPC root
+    std::unique_ptr<MRDA::MRDAService::Stub> m_stub;             //!< client gRPC root
+    std::thread m_sendThread;                                    //!< send frame thread
+    std::thread m_receiveThread;                                 //!< receive frame thread
+    std::mutex m_inputMutex;                                     //!< input queue mutex
+    std::mutex m_outputMutex;                                    //!< output queue mutex
+    std::list<std::shared_ptr<FrameBufferData>> m_inputQueue;    //!< input queue
+    std::list<std::shared_ptr<FrameBufferData>> m_outputQueue;   //!< output queue
+    uint32_t m_frameNum;                                         //!< frame number
 };
 
 VDI_NS_END

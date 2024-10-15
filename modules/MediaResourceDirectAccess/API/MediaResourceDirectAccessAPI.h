@@ -67,6 +67,8 @@ typedef struct HWDevice
 enum class TASKTYPE
 {
     NONE = -1,
+    taskFFmpegEncode,
+    taskOneVPLEncode,
     taskEncode,
     taskDecode
 };
@@ -127,7 +129,7 @@ enum class StreamCodecID {
 //!
 enum class ColorFormat {
     COLOR_FORMAT_NONE = 0,
-    COLOR_FORMAT_YUV420,
+    COLOR_FORMAT_YUV420P,
     COLOR_FORMAT_RGBA32,
     COLOR_FORMAT_NV12
 };
@@ -176,9 +178,8 @@ typedef struct ENCODEPARAMS {
     uint32_t frame_height;              //!< height of frame
     ColorFormat color_format;           //!< pixel color format
     CodecProfile codec_profile;         //!< the profile to create bitstream
-    uint32_t gop_ref_dist;              //!< Distance between I- or P (or GPB) - key frames;If GopRefDist = 1,
-                                        //!< there are no regular B-frames used (only P or GPB)
-    uint32_t num_ref_frame;             //!< max number of all available reference frames
+    uint32_t max_b_frames;              //!< maximum number of B-frames between non-B-frames
+    uint32_t     frame_num;             //!< total frame number
 } EncodeParams;
 
 //!
@@ -212,6 +213,8 @@ typedef struct SHAREMEMORYINFO
     uint64_t     bufferSize;         //!< buffer size
     std::string  in_mem_dev_path;    //!< input memory dev path
     std::string  out_mem_dev_path;   //!< output memory dev path
+    uint32_t     in_mem_dev_slot_number;     //!< input memory device slot number
+    uint32_t     out_mem_dev_slot_number;    //!< output memory device slot number
 }ShareMemoryInfo;
 
 //!

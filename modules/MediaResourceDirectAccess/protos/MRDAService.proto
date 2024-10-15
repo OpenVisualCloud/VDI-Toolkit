@@ -34,9 +34,9 @@ service MRDAService
 {
     rpc SetInitParams(MediaParams) returns (TaskStatus) {}
 
-    rpc SendInputData(BufferInfo) returns (TaskStatus) {}
+    rpc SendInputData(stream BufferInfo) returns (TaskStatus) {}
 
-    rpc ReceiveOutputData(Pts) returns (BufferInfo) {}
+    rpc ReceiveOutputData(Pts) returns (stream BufferInfo) {}
 }
 
 message Pts
@@ -84,8 +84,8 @@ message EncodeParams
     uint32 frame_height = 11;
     uint32 color_format = 12;
     uint32 codec_profile = 13;
-    uint32 gop_ref_dist = 14;
-    uint32 num_ref_frame = 15;
+    uint32 max_b_frames = 14;
+    uint32 frame_num = 15;
 }
 
 message ShareMemoryInfo

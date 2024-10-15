@@ -242,7 +242,9 @@ MRDAStatus EncodeTask::CheckMediaParams(const MediaParams *params)
     // check share memory info
     if (params->shareMemoryInfo.bufferNum <=0 || params->shareMemoryInfo.bufferSize <=0
         || params->shareMemoryInfo.in_mem_dev_path == "" || params->shareMemoryInfo.out_mem_dev_path == ""
-        || params->shareMemoryInfo.totalMemorySize <=0)
+        || params->shareMemoryInfo.totalMemorySize <=0
+        || params->shareMemoryInfo.in_mem_dev_slot_number <= 0
+        || params->shareMemoryInfo.out_mem_dev_slot_number <= 0)
     {
         MRDA_LOG(LOG_ERROR, "invalid share memory parameters setting!");
         return MRDA_STATUS_INVALID_DATA;

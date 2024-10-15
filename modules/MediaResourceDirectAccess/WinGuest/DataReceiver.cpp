@@ -38,27 +38,10 @@
 VDI_NS_BEGIN
 
 DataReceiver::DataReceiver()
-    :m_taskInfo(nullptr)
-    ,m_taskDataSession(nullptr){}
+    :m_taskDataSession(nullptr){}
 
-MRDAStatus DataReceiver::Initialize(const std::shared_ptr<TaskInfo> taskInfo)
-{
-    // task info
-    if (taskInfo == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "Task info is invalid!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-    m_taskInfo = taskInfo;
-    // task data session created FIXME: gRPC proto type selection
-    m_taskDataSession = std::make_unique<TaskDataSession_gRPC>(m_taskInfo);
-    if (m_taskDataSession == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "Create task data session failed!");
-        return MRDA_STATUS_INVALID_DATA;
-    }
-    return MRDA_STATUS_SUCCESS;
-}
+DataReceiver::DataReceiver(std::shared_ptr<TaskDataSession> taskDataSession)
+    :m_taskDataSession(taskDataSession){}
 
 MRDAStatus DataReceiver::ReceiveFrame(std::shared_ptr<FrameBufferData> &data)
 {

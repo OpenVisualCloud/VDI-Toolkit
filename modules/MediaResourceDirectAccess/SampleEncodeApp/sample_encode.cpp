@@ -62,7 +62,7 @@ MRDAStatus ReadRawFrame(FILE *f, FrameBufferItem *data, ColorFormat format)
     switch (format)
     {
     case ColorFormat::COLOR_FORMAT_NV12:
-    case ColorFormat::COLOR_FORMAT_YUV420:
+    case ColorFormat::COLOR_FORMAT_YUV420P:
         frame_size = data->width * data->height * 3 / 2;
         break;
     case ColorFormat::COLOR_FORMAT_RGBA32:
@@ -159,6 +159,9 @@ MRDAStatus EncodeFrame(MRDAHandle mrda_handle, FILE *sink, std::shared_ptr<Frame
 
 MRDAStatus EncodeFrameAsync(MRDAHandle mrda_handle, std::shared_ptr<FrameBufferItem> inBuffer)
 {
+#ifdef _ENABLE_TRACE_
+    if (inBuffer != nullptr) MRDA_LOG(LOG_INFO, "Encoding trace log: begin send frame in sample encode, pts: %llu", inBuffer->pts);
+#endif
     // 1. send input frame
     if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_SendFrame(mrda_handle, inBuffer))
     {
@@ -191,6 +194,9 @@ void ReceiveFrameThread(MRDAHandle mrda_handle, FILE *sink, uint64_t frameNum)
         // success
         if (outBuffer->pts >= 0)
         {
+#ifdef _ENABLE_TRACE_
+            MRDA_LOG(LOG_INFO, "Encoding trace log: complete receive frame in sample encode, pts: %llu", outBuffer->pts);
+#endif
             WriteEncodedFrame(sink, outBuffer.get());
             cur_pts = outBuffer->pts;
             // MRDA_LOG(LOG_INFO, "Receive frame at pts: %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
@@ -253,6 +259,8 @@ typedef struct INPUTCONFIG
     uint64_t     bufferSize;         //!< buffer size
     std::string  in_mem_dev_path;    //!< input memory dev path
     std::string  out_mem_dev_path;   //!< output memory dev path
+    uint32_t     in_mem_dev_slot_number;    //!< input memory dev slot number
+    uint32_t     out_mem_dev_slot_number;   //!< output memory dev slot number
     // encoding params
     uint32_t      frameNum;
     StreamCodecID codec_id;             //!< codec id
@@ -269,9 +277,8 @@ typedef struct INPUTCONFIG
     uint32_t frame_height;              //!< height of frame
     ColorFormat  color_format;          //!< pixel color format
     CodecProfile codec_profile;         //!< the profile to create bitstream
-    uint32_t     gop_ref_dist;          //!< Distance between I- or P (or GPB) - key frames;If GopRefDist = 1,
-                                        //!< there are no regular B-frames used (only P or GPB)
-    uint32_t     num_ref_frame;         //!< max number of all available reference frames
+    uint32_t max_b_frames;              //!< maximum number of B-frames between non-B-frames
+    TASKTYPE encode_type;               //!< encode type, 0 is ffmpeg encode, 1 is oneVPL encode
 } InputConfig;
 
 StreamCodecID StringToCodecID(const char *codec_id)
@@ -321,9 +328,9 @@ ColorFormat StringToColorFormat(const char *color_format)
     {
         colorFormat = ColorFormat::COLOR_FORMAT_RGBA32;
     }
-    else if (0 == strcmp(color_format, "yuv420"))
+    else if (0 == strcmp(color_format, "yuv420p"))
     {
-        colorFormat = ColorFormat::COLOR_FORMAT_YUV420;
+        colorFormat = ColorFormat::COLOR_FORMAT_YUV420P;
     }
     else if (0 == strcmp(color_format, "nv12"))
     {
@@ -375,6 +382,8 @@ void PrintHelp()
     printf("%s", "    [--bufferSize buffer_size]               - specifies buffer size. \n");
     printf("%s", "    [--inDevPath input_device_path]          - specifies input device path. \n");
     printf("%s", "    [--outDevPath output_device_path]        - specifies output device path. \n");
+    printf("%s", "    [--inDevSlotNumber in_dev_slot_number]   - specifies input device slot number. \n");
+    printf("%s", "    [--outDevSlotNumber out_dev_slot_number] - specifies output device slot number. \n");
     printf("%s", "    [--frameNum number_of_frames]            - specifies number of frames to process. \n");
     printf("%s", "    [--codecId codec_identifier]             - specifies the codec identifier. option: h265/hevc | h264/avc \n");
     printf("%s", "    [--gopSize group_of_pictures_size]       - specifies the size of group of pictures. \n");
@@ -386,11 +395,25 @@ void PrintHelp()
     printf("%s", "    [--fps frames_per_second]                - specifies the frames per second. \n");
     printf("%s", "    [--width frame_width]                    - specifies the frame width. \n");
     printf("%s", "    [--height frame_height]                  - specifies the frame height. \n");
-    printf("%s", "    [--colorFormat color_format]             - specifies the color format. option: yuv420, nv12, rgb32 \n");
+    printf("%s", "    [--colorFormat color_format]             - specifies the color format. option: yuv420p, nv12, rgb32 \n");
     printf("%s", "    [--codecProfile codec_profile]           - specifies the codec profile. option: avc:main, avc:high, hevc:main \n");
-    printf("%s", "    [--gopRefDist gop_reference_distance]    - specifies the GOP reference distance. \n");
-    printf("%s", "    [--numRefFrame reference_frames_number]  - specifies the number of reference frames. \n");
-    printf("%s", "Examples: ./MRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051 -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1 --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --gopRefDist 1 --numRefFrame 1\n");
+    printf("%s", "    [--maxBFrames max_b_frames]              - specifies the maximum number of B frames. \n");
+    printf("%s", "    [--encodeType encode_type]               - specifies the encode type. option: ffmpeg, oneVPL \n");
+    printf("%s", "Examples: ./MRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051 -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --inDevSlotNumber 11 --outDevSlotNumber 12 --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1 --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --maxBFrames 0 --encodeType oneVPL \n");
+}
+
+TASKTYPE StringToEncodeType(const char *encode_type_str)
+{
+    TASKTYPE encode_type = TASKTYPE::NONE;
+    if (0 == strcmp(encode_type_str, "ffmpeg"))
+    {
+        encode_type = TASKTYPE::taskFFmpegEncode;
+    }
+    else if (0 == strcmp(encode_type_str, "oneVPL"))
+    {
+        encode_type = TASKTYPE::taskOneVPLEncode;
+    }
+    return encode_type;
 }
 
 bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
@@ -418,6 +441,10 @@ bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
             inputConfig->in_mem_dev_path = argv[++i];
         } else if (strcmp(argv[i], "--outDevPath") == 0 && i + 1 < argc) {
             inputConfig->out_mem_dev_path = argv[++i];
+        } else if (strcmp(argv[i], "--inDevSlotNumber") == 0 && i + 1 < argc) {
+            inputConfig->in_mem_dev_slot_number = static_cast<uint32_t>(std::atoi(argv[++i]));
+        } else if (strcmp(argv[i], "--outDevSlotNumber") == 0 && i + 1 < argc) {
+            inputConfig->out_mem_dev_slot_number = static_cast<uint32_t>(std::atoi(argv[++i]));
         } else if (strcmp(argv[i], "--frameNum") == 0 && i + 1 < argc) {
             inputConfig->frameNum = static_cast<uint32_t>(std::atoi(argv[++i]));
         } else if (strcmp(argv[i], "--codecId") == 0 && i + 1 < argc) {
@@ -445,10 +472,10 @@ bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
             inputConfig->color_format = StringToColorFormat(argv[++i]);
         } else if (strcmp(argv[i], "--codecProfile") == 0 && i + 1 < argc) {
             inputConfig->codec_profile = StringToCodecProfile(argv[++i]);
-        } else if (strcmp(argv[i], "--gopRefDist") == 0 && i + 1 < argc) {
-            inputConfig->gop_ref_dist = static_cast<uint32_t>(std::atoi(argv[++i]));
-        } else if (strcmp(argv[i], "--numRefFrame") == 0 && i + 1 < argc) {
-            inputConfig->num_ref_frame = static_cast<uint32_t>(std::atoi(argv[++i]));
+        } else if (strcmp(argv[i], "--maxBFrames") == 0 && i + 1 < argc) {
+            inputConfig->max_b_frames = static_cast<uint32_t>(std::atoi(argv[++i]));
+        } else if (strcmp(argv[i], "--encodeType") == 0 && i + 1 < argc) {
+            inputConfig->encode_type = StringToEncodeType(argv[++i]);
         } else if (strcmp(argv[i], "--help") == 0 && i + 1 < argc) {
             PrintHelp();
             return false;
@@ -475,6 +502,8 @@ MRDAStatus CreateMediaParams(InputConfig *inputConfig, MediaParams *mediaParams)
     mediaParams->shareMemoryInfo.bufferSize = inputConfig->bufferSize;
     mediaParams->shareMemoryInfo.in_mem_dev_path = inputConfig->in_mem_dev_path;
     mediaParams->shareMemoryInfo.out_mem_dev_path = inputConfig->out_mem_dev_path;
+    mediaParams->shareMemoryInfo.in_mem_dev_slot_number = inputConfig->in_mem_dev_slot_number;
+    mediaParams->shareMemoryInfo.out_mem_dev_slot_number = inputConfig->out_mem_dev_slot_number;
 
     mediaParams->encodeParams.codec_id = inputConfig->codec_id;
     mediaParams->encodeParams.gop_size = inputConfig->gop_size;
@@ -489,8 +518,8 @@ MRDAStatus CreateMediaParams(InputConfig *inputConfig, MediaParams *mediaParams)
     mediaParams->encodeParams.frame_height = inputConfig->frame_height;
     mediaParams->encodeParams.color_format = inputConfig->color_format;
     mediaParams->encodeParams.codec_profile = inputConfig->codec_profile;
-    mediaParams->encodeParams.gop_ref_dist = inputConfig->gop_ref_dist;
-    mediaParams->encodeParams.num_ref_frame = inputConfig->num_ref_frame;
+    mediaParams->encodeParams.max_b_frames = inputConfig->max_b_frames;
+    mediaParams->encodeParams.frame_num = inputConfig->frameNum;
     return MRDA_STATUS_SUCCESS;
 }
 
@@ -504,12 +533,12 @@ int main(int argc, char **argv)
     }
 
     TaskInfo taskInfo = {};
-    taskInfo.taskType = TASKTYPE::taskEncode;
+    taskInfo.taskType = inputConfig.encode_type;
     taskInfo.taskStatus = TASKStatus::TASK_STATUS_UNKNOWN;
     taskInfo.taskID = 0;
     taskInfo.taskDevice.deviceType = DeviceType::NONE;
     taskInfo.taskDevice.deviceID = 0;
-    taskInfo.ipAddr = inputConfig.hostSessionAddr;
+    taskInfo.ipAddr = "";
 
     ExternalConfig config = {};
     config.hostSessionAddr = inputConfig.hostSessionAddr;
@@ -630,7 +659,7 @@ int main(int argc, char **argv)
 #endif
     uint64_t end = std::chrono::duration_cast<std::chrono::milliseconds>(clock.now().time_since_epoch()).count();
     float total_fps = static_cast<float>(curFrameNum) * 1000 / (end - start);
-    MRDA_LOG(LOG_INFO, "total encode frame num: %d, fps: %f", curFrameNum, total_fps);
+    MRDA_LOG(LOG_INFO, "Encoding trace log: total encode frame num: %d, fps: %f", curFrameNum, total_fps);
 
     fclose(sink);
     fclose(source);

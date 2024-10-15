@@ -15,6 +15,9 @@ ENDIF()
 project(MRDAHostService)
 
 AUX_SOURCE_DIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../HostService SERVICE_SRC)
+AUX_SOURCE_DIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../HostService/EncodeService SERVICE_ENCODE_SRC)
+AUX_SOURCE_DIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../HostService/EncodeService/VPLEncode SERVICE_VPLENCODE_SRC)
+AUX_SOURCE_DIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../HostService/EncodeService/FFmpegEncode SERVICE_FFMPEGENCODE_SRC)
 AUX_SOURCE_DIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../../utils UTILS_SRC)
 
 set(TARGET HostService)
@@ -89,6 +92,9 @@ endforeach()
 
 set(DIR_SRC
   ${SERVICE_SRC}
+  ${SERVICE_ENCODE_SRC}
+  ${SERVICE_VPLENCODE_SRC}
+  ${SERVICE_FFMPEGENCODE_SRC}
   ${UTILS_SRC}
   )
 
@@ -104,35 +110,62 @@ target_link_libraries(${TARGET}
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF})
 
-find_package(VPL REQUIRED)
-target_link_libraries(${TARGET} VPL::dispatcher)
+OPTION(VPL_SUPPORT
+  "Use VPL support"
+  OFF
+)
+
+OPTION(FFMPEG_SUPPORT
+  "Use FFMPEG support"
+  ON
+)
+
+OPTION(ENABLE_TRACE
+  "Use trace log"
+  OFF
+)
+
+IF(ENABLE_TRACE)
+  message(STATUS "Using trace log")
+  ADD_DEFINITIONS("-D_ENABLE_TRACE_")
+ENDIF(ENABLE_TRACE)
+
+IF(VPL_SUPPORT)
+  ADD_DEFINITIONS("-D_VPL_SUPPORT_")
+  find_package(VPL REQUIRED)
+  target_link_libraries(${TARGET} VPL::dispatcher)
+  set(LIBVA_SUPPORT
+    ON
+    CACHE BOOL "Enable hardware support.")
+  if(LIBVA_SUPPORT)
+      find_package(PkgConfig REQUIRED)
+      # note: pkg-config version for libva is *API* version
+      pkg_check_modules(PKG_LIBVA IMPORTED_TARGET libva>=1.2)
+      pkg_check_modules(PKG_LIBVA_DRM IMPORTED_TARGET libva-drm>=1.2)
+      if(PKG_LIBVA_FOUND)
+          target_compile_definitions(${TARGET} PUBLIC -DLIBVA_SUPPORT)
+          set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+          set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+          find_package(Threads REQUIRED)
+          target_link_libraries(${TARGET} PkgConfig::PKG_LIBVA
+                              PkgConfig::PKG_LIBVA_DRM Threads::Threads)
+          target_include_directories(${TARGET} PUBLIC ${PKG_LIBVA_INCLUDE_DIRS})
+      else()
+          message(
+          SEND_ERROR
+              "libva not found: set LIBVA_SUPPORT=OFF to build ${TARGET} without libva support"
+          )
+      endif()
+  else()
+      message(STATUS "Building ${TARGET} without hardware support")
+  endif()
+ENDIF(VPL_SUPPORT)
+
+IF(FFMPEG_SUPPORT)
+  ADD_DEFINITIONS("-D_FFMPEG_SUPPORT_")
+  target_link_libraries(${TARGET} avcodec avutil swscale)
+ENDIF(FFMPEG_SUPPORT)
 
 include_directories(
   ${proto_path}
   )
-
-set(LIBVA_SUPPORT
-    ON
-    CACHE BOOL "Enable hardware support.")
-if(LIBVA_SUPPORT)
-    find_package(PkgConfig REQUIRED)
-    # note: pkg-config version for libva is *API* version
-    pkg_check_modules(PKG_LIBVA IMPORTED_TARGET libva>=1.2)
-    pkg_check_modules(PKG_LIBVA_DRM IMPORTED_TARGET libva-drm>=1.2)
-    if(PKG_LIBVA_FOUND)
-        target_compile_definitions(${TARGET} PUBLIC -DLIBVA_SUPPORT)
-        set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-        set(THREADS_PREFER_PTHREAD_FLAG TRUE)
-        find_package(Threads REQUIRED)
-        target_link_libraries(${TARGET} PkgConfig::PKG_LIBVA
-                            PkgConfig::PKG_LIBVA_DRM Threads::Threads)
-        target_include_directories(${TARGET} PUBLIC ${PKG_LIBVA_INCLUDE_DIRS})
-    else()
-        message(
-        SEND_ERROR
-            "libva not found: set LIBVA_SUPPORT=OFF to build ${TARGET} without libva support"
-        )
-    endif()
-else()
-    message(STATUS "Building ${TARGET} without hardware support")
-endif()

@@ -25,7 +25,7 @@ if not exist "./build" (
     mkdir build
 )
 cd build
-cmake .. -DCMAKE_PREFIX_PATH="%~dp0\..\..\..\external\grpc\install"
+cmake .. -DCMAKE_PREFIX_PATH="%~dp0\..\..\..\external\grpc\install"  -DENABLE_TRACE=OFF
 cmake --build . --config Release
 
 cmake --install .

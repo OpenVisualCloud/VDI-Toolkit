@@ -91,13 +91,15 @@ public:
     //!             number of buffers in the pool
     //! \param [in] buffer_size
     //!             size of each buffer in the pool
+    //! \param [in] slot_number
+    //!             memory device slot number
     //! \return MRDAStatus
     //!         MRDA_STATUS_SUCCESS if success, else fail
     //!
-    MRDAStatus InitBufferPool(const uint32_t buffer_num, const uint64_t buffer_size)
+    MRDAStatus InitBufferPool(const uint32_t buffer_num, const uint64_t buffer_size, const uint32_t slot_number)
     {
         // initialize ivshmem device
-        if (MRDA_STATUS_SUCCESS != InitializeMemoryDevice())
+        if (MRDA_STATUS_SUCCESS != InitializeMemoryDevice(slot_number))
         {
             MRDA_LOG(LOG_ERROR, "Failed to initialize ivshmem device!");
             return MRDA_STATUS_INVALID;
@@ -166,13 +168,15 @@ private:
     //!
     //! \brief Initialize ivshmem device
     //!
+    //! \param       [in] slot_number
+    //!              memory device slot number
     //! \return MRDAStatus
     //!         MRDA_STATUS_SUCCESS if success, else fail
     //!
-    MRDAStatus InitializeMemoryDevice()
+    MRDAStatus InitializeMemoryDevice(const uint32_t slot_number)
     {
         m_ivshmem = std::make_unique<Ivshmem>();
-        if (m_ivshmem->Init() != MRDA_STATUS_SUCCESS)
+        if (m_ivshmem->Init(slot_number) != MRDA_STATUS_SUCCESS)
         {
             MRDA_LOG(LOG_ERROR, "Failed to initialize IVSHMEM!");
             return MRDA_STATUS_INVALID;

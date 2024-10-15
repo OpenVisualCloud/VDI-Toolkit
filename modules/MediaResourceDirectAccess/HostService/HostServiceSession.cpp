@@ -82,62 +82,64 @@ Status HostServiceSession::SetInitParams(ServerContext* context, const MRDA::Med
     return Status::OK;
 }
 
-Status HostServiceSession::SendInputData(ServerContext* context, const MRDA::BufferInfo* bufferInfo, MRDA::TaskStatus* mrda_taskStatus)
+Status HostServiceSession::SendInputData(ServerContext* context, ServerReader<MRDA::BufferInfo>* reader, MRDA::TaskStatus* status)
 {
-    if (bufferInfo == nullptr || mrda_taskStatus == nullptr)
+    MRDA::BufferInfo mrda_bufferInfo;
+    while (reader->Read(&mrda_bufferInfo))
     {
-        MRDA_LOG(LOG_ERROR, "input data is invalid");
-        return Status::CANCELLED;
+        std::shared_ptr<FrameBufferData> buffer = std::make_shared<FrameBufferData>();
+        MakeBufferInfoBack(&mrda_bufferInfo, buffer);
+        if (m_hostService == nullptr)
+        {
+            MRDA_LOG(LOG_ERROR, "host service is not initialized");
+            return Status::CANCELLED;
+        }
+        MRDAStatus st = m_hostService->SendInputData(buffer);
     }
-    std::shared_ptr<FrameBufferData> buffer = std::make_shared<FrameBufferData>();
-    MakeBufferInfoBack(bufferInfo, buffer);
-    if (m_hostService == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "host service is not initialized");
-        return Status::CANCELLED;
-    }
-
-    MRDAStatus st = m_hostService->SendInputData(buffer);
-    mrda_taskStatus->set_status(static_cast<int32_t>(st));
+    status->set_status(static_cast<int32_t>(MRDA_STATUS_SUCCESS));
 
     return Status::OK;
 }
 
-Status HostServiceSession::ReceiveOutputData(ServerContext* context, const MRDA::Pts* pts, MRDA::BufferInfo* bufferInfo)
+Status HostServiceSession::ReceiveOutputData(ServerContext* context, const MRDA::Pts* pts, ServerWriter<MRDA::BufferInfo>* writer)
 {
-    if (pts == nullptr || bufferInfo == nullptr)
+    bool stopFlag = false;
+    while (!stopFlag)
     {
-        MRDA_LOG(LOG_ERROR, "input data is invalid");
-        return Status::CANCELLED;
-    }
-    std::shared_ptr<FrameBufferData> buffer = nullptr;
+        std::shared_ptr<FrameBufferData> buffer = nullptr;
 
-    if (m_hostService == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "host service is not initialized");
-        return Status::CANCELLED;
+        if (m_hostService == nullptr)
+        {
+            MRDA_LOG(LOG_ERROR, "host service is not initialized");
+            return Status::CANCELLED;
+        }
+        MRDA::BufferInfo mrda_bufferInfo;
+        MRDAStatus st = m_hostService->ReceiveOutputData(buffer);
+        // error
+        if (MRDA_STATUS_SUCCESS != st && MRDA_STATUS_NOT_ENOUGH_DATA != st)
+        {
+            MRDA_LOG(LOG_ERROR, "receive output data failed");
+        }
+        // not enough output data
+        else if (MRDA_STATUS_NOT_ENOUGH_DATA == st) {
+            // MRDA_LOG(LOG_INFO, "Receive data empty! please wait!");
+            usleep(1000);
+        }
+        else if (buffer != nullptr)
+        {
+            MakeBufferInfo(buffer, &mrda_bufferInfo);
+            if (!writer->Write(mrda_bufferInfo))
+            {
+                MRDA_LOG(LOG_ERROR, "failed to write output data");
+                return Status::CANCELLED;
+            }
+            if (buffer->Pts() >= pts->pts() - 1)
+            {
+                // MRDA_LOG(LOG_INFO, "Receive stopFlag true!");
+                stopFlag = true;
+            }
+        }
     }
-
-    MRDAStatus st = m_hostService->ReceiveOutputData(buffer);
-    // error
-    if (MRDA_STATUS_SUCCESS != st && MRDA_STATUS_NOT_ENOUGH_DATA != st)
-    {
-        MRDA_LOG(LOG_ERROR, "receive output data failed");
-        return Status::CANCELLED;
-    }
-    // not enough output data
-    if (MRDA_STATUS_NOT_ENOUGH_DATA == st) {
-        // MRDA_LOG(LOG_INFO, "Receive data empty! please wait!");
-        return grpc::Status(grpc::StatusCode::UNAVAILABLE, "unavailable data provided.");
-    }
-    // check pts
-    if (MRDA_STATUS_SUCCESS == st && buffer->Pts() != pts->pts())
-    {
-        MRDA_LOG(LOG_ERROR, "pts is not equal, buffer pts %lu, required pts %lu", buffer->Pts(), pts->pts());
-        return Status::CANCELLED;
-    }
-
-    MakeBufferInfo(buffer, bufferInfo);
 
     return Status::OK;
 }
@@ -221,8 +223,8 @@ MRDAStatus HostServiceSession::MakeMediaParamsBack(const MRDA::MediaParams* mrda
     params->encodeParams.frame_height = mrda_encParams->frame_height();
     params->encodeParams.color_format = static_cast<ColorFormat>(mrda_encParams->color_format());
     params->encodeParams.codec_profile = static_cast<CodecProfile>(mrda_encParams->codec_profile());
-    params->encodeParams.gop_ref_dist = mrda_encParams->gop_ref_dist();
-    params->encodeParams.num_ref_frame = mrda_encParams->num_ref_frame();
+    params->encodeParams.max_b_frames = mrda_encParams->max_b_frames();
+    params->encodeParams.frame_num = mrda_encParams->frame_num();
     return MRDA_STATUS_SUCCESS;
 }
 

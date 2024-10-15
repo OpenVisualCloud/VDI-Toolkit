@@ -37,6 +37,11 @@
 #include "../utils/common.h"
 #include "../SHMemory/FrameBufferData.h"
 
+#include <fstream>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <cstring>
 #include <string>
 
 VDI_NS_BEGIN
@@ -102,6 +107,46 @@ public:
     //!
     virtual MRDAStatus ReceiveOutputData(std::shared_ptr<FrameBufferData> &data) = 0;
 
+protected:
+    //!
+    //! \brief Get the In Shm File Ptr object
+    //!
+    //! \param [in] filePath
+    //! \return MRDAStatus
+    //!
+    MRDAStatus GetInShmFilePtr(std::string filePath);
+
+    //!
+    //! \brief Get the Out Shm File Ptr object
+    //!
+    //! \param [in] filePath
+    //! \return MRDAStatus
+    //!
+    MRDAStatus GetOutShmFilePtr(std::string filePath);
+        //!
+    //! \brief ref frame
+    //!
+    //! \param [in] frame
+    //!
+    void RefOutputFrame(std::shared_ptr<FrameBufferData> frame);
+
+    //!
+    //! \brief unref frame
+    //!
+    //! \param [in] frame
+    //!
+    void UnRefInputFrame(std::shared_ptr<FrameBufferData> frame);
+
+protected:
+    std::unique_ptr<MediaParams> m_mediaParams = nullptr; //<! media parameters
+
+    // Shared Memory
+    int m_inShmFile = -1; //<! input shared memory file path
+    char *m_inShmMem = nullptr; //<! input shared memory buffer
+    size_t m_inShmSize = 0; //<! input shared memory buffer size
+    int m_outShmFile = -1; //<! output shared memory file path
+    char *m_outShmMem = nullptr; //<! output shared memory buffer
+    size_t m_outShmSize = 0; //<! output shared memory buffer size
 };
 
 VDI_NS_END

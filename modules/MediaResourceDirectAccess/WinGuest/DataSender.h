@@ -47,17 +47,13 @@ public:
     //!
     DataSender();
     //!
+    //! \brief Construct a new Data Sender object
+    //!
+    DataSender(std::shared_ptr<TaskDataSession> taskDataSession);
+    //!
     //! \brief Destroy the Data Sender object
     //!
     virtual ~DataSender() = default;
-    //!
-    //! \brief Initialize with task info
-    //!
-    //! \param [in] taskInfo
-    //! \return MRDAStatus
-    //!
-    MRDAStatus Initialize(const std::shared_ptr<TaskInfo> taskInfo);
-
     //!
     //! \brief Set the Init Params object
     //!
@@ -77,8 +73,7 @@ public:
     MRDAStatus SendFrame(const std::shared_ptr<FrameBufferData> data);
 
 private:
-    std::shared_ptr<TaskInfo> m_taskInfo; //!< task info
-    std::unique_ptr<TaskDataSession> m_taskDataSession; //!< task data session
+    std::shared_ptr<TaskDataSession> m_taskDataSession; //!< task data session
 };
 
 VDI_NS_END

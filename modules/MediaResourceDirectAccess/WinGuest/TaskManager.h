@@ -42,6 +42,8 @@
 #include "../SHMemory/FrameMemoryPool.h"
 #include "TaskManagerSession.h"
 #include "TaskManagerSession_gRPC.h"
+#include "TaskDataSession.h"
+#include "TaskDataSession_gRPC.h"
 
 VDI_NS_BEGIN
 
@@ -166,6 +168,7 @@ private:
     std::shared_ptr<TaskManagerSession> m_taskManagerSession;       //!< task manager session
     std::shared_ptr<DataSender> m_dataSender;                       //!< data sender
     std::shared_ptr<DataReceiver> m_dataReceiver;                   //!< data receiver
+    std::shared_ptr<TaskDataSession> m_taskDataSession;             //!< task data session
 };
 
 VDI_NS_END

@@ -94,11 +94,12 @@ public:
     //! \brief Send input data
     //!
     //! \param [in] context
-    //! \param [in] stream
+    //! \param [in] reader
+    //! \param [out] status
     //! \return Status
     //!         MRDA_STATUS_SUCCESS if success, else fails
     //!
-    // virtual Status SendInputData(ServerContext* context, ServerReaderWriter<MRDA::TaskStatus, MRDA::MediaParams>* stream) override = 0;
+    virtual Status SendInputData(ServerContext* context, ServerReader<MRDA::BufferInfo>* reader, MRDA::TaskStatus* status) override;
 
     /// FIXME: use unary API as the first step, then use stream as optimization
     //!
@@ -109,17 +110,18 @@ public:
     //! \param [out] taskStatus
     //! \return Status
     //!
-    virtual Status SendInputData(ServerContext* context, const MRDA::BufferInfo* bufferInfo, MRDA::TaskStatus* taskStatus) override;
+    // virtual Status SendInputData(ServerContext* context, const MRDA::BufferInfo* bufferInfo, MRDA::TaskStatus* taskStatus) override;
 
     //!
     //! \brief
     //!
     //! \param [in] context
-    //! \param [in] stream
+    //! \param [in] pts
+    //! \param [in] writer
     //! \return Status
     //!         MRDA_STATUS_SUCCESS if success, else fails
     //!
-    // virtual Status ReceiveOutputData(ServerContext* context, ServerReaderWriter<MRDA::TaskStatus, MRDA::MediaParams>* stream) override = 0;
+    virtual Status ReceiveOutputData(ServerContext* context, const MRDA::Pts* pts, ServerWriter<MRDA::BufferInfo>* writer) override;
 
     //!
     //! \brief Receive output data using gRPC
@@ -129,7 +131,7 @@ public:
     //! \param [in] bufferInfo
     //! \return Status
     //!
-    virtual Status ReceiveOutputData(ServerContext* context, const MRDA::Pts* pts, MRDA::BufferInfo* bufferInfo) override;
+    // virtual Status ReceiveOutputData(ServerContext* context, const MRDA::Pts* pts, MRDA::BufferInfo* bufferInfo) override;
 
     //!
     //! \brief Get the Host Service Instance object

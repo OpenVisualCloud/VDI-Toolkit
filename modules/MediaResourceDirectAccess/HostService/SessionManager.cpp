@@ -232,7 +232,7 @@ void SessionManagerImpl::RunService()
     serverBuilder->AddListeningPort(m_server_addr, grpc::InsecureServerCredentials());
     serverBuilder->RegisterService(this);
     m_server = serverBuilder->BuildAndStart();
-    MRDA_LOG(LOG_INFO, "HostVPLEncodeService listening on %s", m_server_addr.c_str());
+    MRDA_LOG(LOG_INFO, "HostEncodeService listening on %s", m_server_addr.c_str());
     m_server->Wait();
 }
 
