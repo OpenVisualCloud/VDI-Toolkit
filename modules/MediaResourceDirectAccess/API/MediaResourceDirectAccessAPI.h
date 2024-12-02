@@ -70,6 +70,8 @@ enum class TASKTYPE
     taskFFmpegEncode,
     taskOneVPLEncode,
     taskEncode,
+    taskFFmpegDecode,
+    taskOneVPLDecode,
     taskDecode
 };
 
@@ -187,7 +189,13 @@ typedef struct ENCODEPARAMS {
 //!
 //!
 typedef struct DECODEPARAMS {
-    // Need further implementation
+    StreamCodecID codec_id;             //!< codec id
+    int32_t framerate_num;              //!< frame rate numerator
+    int32_t framerate_den;              //!< frame rate denominator
+    uint32_t  frame_width;              //!< width of frame
+    uint32_t frame_height;              //!< height of frame
+    ColorFormat color_format;           //!< output pixel color format
+    uint32_t    frame_num;              //!< total frame number
 } DecodeParams;
 
 //!
@@ -225,7 +233,7 @@ typedef struct MEDIAPARAMS {
     ShareMemoryInfo  shareMemoryInfo;    //!< share memory info
     // StreamInfo       streamInfo;      //!< stream information
     EncodeParams     encodeParams;       //!< encode parameters
-    // DecodeParams     decodeParams;    //!< decode parameters
+    DecodeParams     decodeParams;    //!< decode parameters
 } MediaParams;
 
 //!

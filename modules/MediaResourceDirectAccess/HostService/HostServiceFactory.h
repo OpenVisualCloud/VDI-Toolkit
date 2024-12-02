@@ -40,6 +40,7 @@
 #endif
 #ifdef _FFMPEG_SUPPORT_
 #include "EncodeService/FFmpegEncode/HostFFmpegEncodeService.h"
+#include "DecodeService/FFmpegDecode/HostFFmpegDecodeService.h"
 #endif
 #include "../protos/MRDAServiceManager.grpc.pb.h"
 
@@ -87,11 +88,14 @@ public:
 #endif
         }
         else if (info->devicetype() == static_cast<int32_t>(DeviceType::GPU)
-            && info->tasktype() == static_cast<int32_t>(TASKTYPE::taskDecode))
+            && info->tasktype() == static_cast<int32_t>(TASKTYPE::taskFFmpegDecode))
         {
-            // FIXME : Need further implementation.
-            // return std::make_shared<VPLDecoderService>();
+#ifdef _FFMPEG_SUPPORT_
+            return std::make_shared<HostFFmpegDecodeService>();
+#else
+            MRDA_LOG(LOG_ERROR, "FFmpeg is not supported");
             return nullptr;
+#endif
         }
         else
         {

@@ -21,17 +21,17 @@ ENDIF()
 
 
 # Project
-project(MRDASampleApp)
+project(MRDASampleEncodeApp)
 
-AUX_SOURCE_DIRECTORY(../../../SampleEncodeApp SAMPLE_SRC)
+AUX_SOURCE_DIRECTORY(../src SAMPLE_SRC)
 
-set(TARGET MRDASampleApp)
+set(TARGET MRDASampleEncodeApp)
 
 set(DIR_SRC
   ${SAMPLE_SRC}
   )
 
-link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../lib/install/lib/)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../MediaResourceDirectAccess/Scripts/Windows/lib/install/lib/)
 
 # Targets
 add_executable(${TARGET}
@@ -41,5 +41,6 @@ add_executable(${TARGET}
 target_link_libraries(${TARGET} libWinGuest)
 
 include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/../lib/install/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../MediaResourceDirectAccess/Scripts/Windows/lib/install/lib/install/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../MediaResourceDirectAccess/utils
 )

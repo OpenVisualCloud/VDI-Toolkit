@@ -156,12 +156,21 @@ public:
     //!
     MRDAStatus GetBufferFromId(uint32_t id, std::shared_ptr<FrameBufferData>& data);
 
+    //!
+    //! \brief Get task type
+    //!
+    //! \return TASKTYPE
+    //!
+    inline TASKTYPE TaskType() {
+        return m_taskInfo ? m_taskInfo->taskType : TASKTYPE::NONE;
+    }
+
 private:
     std::shared_ptr<TaskInfo> m_taskInfo;             //!< task info
     // StreamInfo  m_streamInfo;                      //!< stream info
     std::shared_ptr<EncodeParams> m_encodeParams;     //!< encode parameters
+    std::shared_ptr<DecodeParams> m_decodeParams;     //!< decode parameters
     std::shared_ptr<ShareMemoryInfo> m_shareMemInfo;  //!< share memory information
-    // DecodeParams m_decodeParams;                   //!< decode parameters
 
     std::shared_ptr<MemoryPool<FrameBufferData>> m_inMemoryPool;    //!< memory pool for input frame
     std::shared_ptr<MemoryPool<FrameBufferData>> m_outMemoryPool;   //!< memory pool for output frame

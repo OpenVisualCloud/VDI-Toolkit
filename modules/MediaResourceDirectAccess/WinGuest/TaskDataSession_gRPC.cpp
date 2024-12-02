@@ -41,6 +41,8 @@ TaskDataSession_gRPC::TaskDataSession_gRPC(std::shared_ptr<TaskInfo> taskInfo)
     m_stub = MRDA::MRDAService::NewStub(channel);
     m_inputQueue.clear();
     m_outputQueue.clear();
+    m_taskInfo = taskInfo;
+    m_frameNum = 0;
 }
 
 TaskDataSession_gRPC::~TaskDataSession_gRPC()
@@ -49,6 +51,7 @@ TaskDataSession_gRPC::~TaskDataSession_gRPC()
     m_receiveThread.join();
     m_inputQueue.clear();
     m_outputQueue.clear();
+    m_frameNum = 0;
 }
 
 MRDA::MediaParams TaskDataSession_gRPC::MakeMediaParams(const MediaParams *params)
@@ -81,6 +84,14 @@ MRDA::MediaParams TaskDataSession_gRPC::MakeMediaParams(const MediaParams *param
     mrda_encParams->set_codec_profile(static_cast<uint32_t>(params->encodeParams.codec_profile));
     mrda_encParams->set_max_b_frames(params->encodeParams.max_b_frames);
     mrda_encParams->set_frame_num(params->encodeParams.frame_num);
+    MRDA::DecodeParams *mrda_decParams = mrda_mediaParams.mutable_dec_params();
+    mrda_decParams->set_codec_id(static_cast<uint32_t>(params->decodeParams.codec_id));
+    mrda_decParams->set_frame_width(params->decodeParams.frame_width);
+    mrda_decParams->set_frame_height(params->decodeParams.frame_height);
+    mrda_decParams->set_color_format(static_cast<uint32_t>(params->decodeParams.color_format));
+    mrda_decParams->set_frame_num(params->decodeParams.frame_num);
+    mrda_decParams->set_framerate_den(params->decodeParams.framerate_den);
+    mrda_decParams->set_framerate_num(params->decodeParams.framerate_num);
 
     return mrda_mediaParams;
 }
@@ -147,7 +158,24 @@ std::shared_ptr<FrameBufferData> TaskDataSession_gRPC::MakeBufferInfoBack(MRDA::
 MRDAStatus TaskDataSession_gRPC::SetInitParams(const MediaParams *params)
 {
     if (params == nullptr) return MRDA_STATUS_INVALID_PARAM;
-    m_frameNum = params->encodeParams.frame_num;
+
+    if (m_taskInfo->taskType == TASKTYPE::taskDecode ||
+        m_taskInfo->taskType == TASKTYPE::taskFFmpegDecode ||
+        m_taskInfo->taskType == TASKTYPE::taskOneVPLDecode)
+    {
+        m_frameNum = params->decodeParams.frame_num;
+    }
+    else if (m_taskInfo->taskType == TASKTYPE::taskEncode ||
+             m_taskInfo->taskType == TASKTYPE::taskFFmpegEncode ||
+             m_taskInfo->taskType == TASKTYPE::taskOneVPLEncode)
+    {
+        m_frameNum = params->encodeParams.frame_num;
+    }
+    else
+    {
+        MRDA_LOG(LOG_ERROR, "invalid task type!");
+        return MRDA_STATUS_INVALID_PARAM;
+    }
     grpc::ClientContext context;
     MRDA::MediaParams in_mrda_mediaParams = MakeMediaParams(params);
     MRDA::TaskStatus out_mrda_taskStatus;
@@ -189,7 +217,7 @@ void TaskDataSession_gRPC::SendThread()
 
         MRDA::BufferInfo in_mrda_bufferInfo = MakeBufferInfo(data);
 #ifdef _ENABLE_TRACE_
-        MRDA_LOG(LOG_INFO, "Encoding trace log: send gRPC frame buffer in VM, pts: %llu", data->Pts());
+        MRDA_LOG(LOG_INFO, "MRDA trace log: send gRPC frame buffer in VM, pts: %llu", data->Pts());
 #endif
         if (!writer->Write(in_mrda_bufferInfo))
         {
@@ -231,7 +259,7 @@ void TaskDataSession_gRPC::ReceiveThread()
         std::unique_lock<std::mutex> lock(m_outputMutex);
         m_outputQueue.push_back(data);
 #ifdef _ENABLE_TRACE_
-        MRDA_LOG(LOG_INFO, "Encoding trace log: receive gRPC frame buffer in VM, pts: %llu", data->Pts());
+        MRDA_LOG(LOG_INFO, "MRDA trace log: receive gRPC frame buffer in VM, pts: %llu", data->Pts());
 #endif
     }
     Status status = reader->Finish();
@@ -251,7 +279,7 @@ MRDAStatus TaskDataSession_gRPC::SendFrame(const std::shared_ptr<FrameBufferData
     }
     std::unique_lock<std::mutex> lock(m_inputMutex);
 #ifdef _ENABLE_TRACE_
-    MRDA_LOG(LOG_INFO, "Encoding trace log: push back frame in input queue in task data session, pts: %llu", data->Pts());
+    MRDA_LOG(LOG_INFO, "MRDA trace log: push back frame in input queue in task data session, pts: %llu", data->Pts());
 #endif
     m_inputQueue.push_back(data);
     return MRDA_STATUS_SUCCESS;
@@ -270,7 +298,7 @@ MRDAStatus TaskDataSession_gRPC::ReceiveFrame(std::shared_ptr<FrameBufferData> &
     data = m_outputQueue.front();
     m_outputQueue.pop_front();
 #ifdef _ENABLE_TRACE_
-    MRDA_LOG(LOG_INFO, "Encoding trace log: pop front frame in output queue in task data session, pts: %llu", data->Pts());
+    MRDA_LOG(LOG_INFO, "MRDA trace log: pop front frame in output queue in task data session, pts: %llu", data->Pts());
 #endif
     }
 

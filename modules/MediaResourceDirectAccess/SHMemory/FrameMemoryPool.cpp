@@ -95,6 +95,7 @@ MRDAStatus FrameMemoryPool::GetBuffer(std::shared_ptr<FrameBufferData> &buffer)
         {
             memBuf->SetState(BufferState::BUFFER_STATE_BUSY);
             // write state to buffer
+            state = BufferState::BUFFER_STATE_BUSY;
             memcpy(memBuf->BufPtr(), &state, sizeof(BufferState));
             buffer = *it;
             break;

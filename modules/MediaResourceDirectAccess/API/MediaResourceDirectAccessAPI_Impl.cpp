@@ -34,124 +34,124 @@
 #include "MediaResourceDirectAccessAPI.h"
 #include "../utils/common.h"
 
-#include "../WinGuest/EncodeTask.h"
+#include "../WinGuest/MediaTask.h"
 
 VDI_USE_MRDALib;
 
 MRDAHandle MediaResourceDirectAccess_Init(const TaskInfo *taskInfo, const ExternalConfig *config)
 {
-    EncodeTask* encodeTask = new EncodeTask();
-    if (encodeTask == nullptr)
+    MediaTask* mediaTask = new MediaTask();
+    if (mediaTask == nullptr)
     {
-        MRDA_LOG(LOG_ERROR, "Failed to create EncodeTask");
+        MRDA_LOG(LOG_ERROR, "Failed to create mediaTask");
         return nullptr;
     }
 
-    if (MRDA_STATUS_SUCCESS != encodeTask->Initialize(taskInfo, config))
+    if (MRDA_STATUS_SUCCESS != mediaTask->Initialize(taskInfo, config))
     {
-        MRDA_LOG(LOG_ERROR, "Failed to initialize EncodeTask");
+        MRDA_LOG(LOG_ERROR, "Failed to initialize mediaTask");
         return nullptr;
     }
 
-    // MRDA_LOG(LOG_INFO, "EncodeTask initialized successfully");
-    return encodeTask;
+    // MRDA_LOG(LOG_INFO, "mediaTask initialized successfully");
+    return mediaTask;
 }
 
 MRDAStatus MediaResourceDirectAccess_Stop(MRDAHandle handle)
 {
-    EncodeTask* encodeTask = (EncodeTask*)handle;
-    if (encodeTask == nullptr)
+    MediaTask* mediaTask = (MediaTask*)handle;
+    if (mediaTask == nullptr)
     {
-        MRDA_LOG(LOG_ERROR, "Invalid EncodeTask handle");
+        MRDA_LOG(LOG_ERROR, "Invalid mediaTask handle");
         return MRDA_STATUS_INVALID_HANDLE;
     }
 
-    return encodeTask->Stop();
+    return mediaTask->Stop();
 }
 
 MRDAStatus MediaResourceDirectAccess_Reset(MRDAHandle handle, TaskInfo *taskInfo)
 {
-    EncodeTask* encodeTask = (EncodeTask*)handle;
-    if (encodeTask == nullptr)
+    MediaTask* mediaTask = (MediaTask*)handle;
+    if (mediaTask == nullptr)
     {
-        MRDA_LOG(LOG_ERROR, "Invalid EncodeTask handle");
+        MRDA_LOG(LOG_ERROR, "Invalid mediaTask handle");
         return MRDA_STATUS_INVALID_HANDLE;
     }
 
-    return encodeTask->Reset(taskInfo);
+    return mediaTask->Reset(taskInfo);
 }
 
 MRDAStatus MediaResourceDirectAccess_Destroy(MRDAHandle handle)
 {
-    EncodeTask* encodeTask = (EncodeTask*)handle;
-    if (encodeTask == nullptr)
+    MediaTask* mediaTask = (MediaTask*)handle;
+    if (mediaTask == nullptr)
     {
-        MRDA_LOG(LOG_ERROR, "Invalid EncodeTask handle");
+        MRDA_LOG(LOG_ERROR, "Invalid mediaTask handle");
         return MRDA_STATUS_INVALID_HANDLE;
     }
 
-    encodeTask->Destroy();
-    SAFE_DELETE(encodeTask);
+    mediaTask->Destroy();
+    SAFE_DELETE(mediaTask);
 
     return MRDA_STATUS_SUCCESS;
 }
 
 MRDAStatus MediaResourceDirectAccess_SetInitParams(MRDAHandle handle, const MediaParams *mediaParams)
 {
-    EncodeTask* encodeTask = (EncodeTask*)handle;
-    if (encodeTask == nullptr)
+    MediaTask* mediaTask = (MediaTask*)handle;
+    if (mediaTask == nullptr)
     {
-        MRDA_LOG(LOG_ERROR, "Invalid EncodeTask handle");
+        MRDA_LOG(LOG_ERROR, "Invalid mediaTask handle");
         return MRDA_STATUS_INVALID_HANDLE;
     }
 
-    return encodeTask->SetInitParams(mediaParams);
+    return mediaTask->SetInitParams(mediaParams);
 }
 
 MRDAStatus MediaResourceDirectAccess_GetBufferForInput(MRDAHandle handle, std::shared_ptr<FrameBufferItem> &inputFrameData)
 {
-    EncodeTask* encodeTask = (EncodeTask*)handle;
-    if (encodeTask == nullptr)
+    MediaTask* mediaTask = (MediaTask*)handle;
+    if (mediaTask == nullptr)
     {
-        MRDA_LOG(LOG_ERROR, "Invalid EncodeTask handle");
+        MRDA_LOG(LOG_ERROR, "Invalid mediaTask handle");
         return MRDA_STATUS_INVALID_HANDLE;
     }
 
-    return encodeTask->GetOneInputBuffer(inputFrameData);
+    return mediaTask->GetOneInputBuffer(inputFrameData);
 }
 
 MRDAStatus MediaResourceDirectAccess_ReleaseOutputBuffer(MRDAHandle handle, std::shared_ptr<FrameBufferItem> outputFrameData)
 {
-    EncodeTask* encodeTask = (EncodeTask*)handle;
-    if (encodeTask == nullptr)
+    MediaTask* mediaTask = (MediaTask*)handle;
+    if (mediaTask == nullptr)
     {
-        MRDA_LOG(LOG_ERROR, "Invalid EncodeTask handle");
+        MRDA_LOG(LOG_ERROR, "Invalid mediaTask handle");
         return MRDA_STATUS_INVALID_HANDLE;
     }
 
-    return encodeTask->ReleaseOutputBuffer(outputFrameData);
+    return mediaTask->ReleaseOutputBuffer(outputFrameData);
 }
 
 MRDAStatus MediaResourceDirectAccess_SendFrame(MRDAHandle handle, std::shared_ptr<FrameBufferItem> inputFrameData)
 {
-    EncodeTask* encodeTask = (EncodeTask*)handle;
-    if (encodeTask == nullptr)
+    MediaTask* mediaTask = (MediaTask*)handle;
+    if (mediaTask == nullptr)
     {
-        MRDA_LOG(LOG_ERROR, "Invalid EncodeTask handle");
+        MRDA_LOG(LOG_ERROR, "Invalid mediaTask handle");
         return MRDA_STATUS_INVALID_HANDLE;
     }
 
-    return encodeTask->SendFrame(inputFrameData);
+    return mediaTask->SendFrame(inputFrameData);
 }
 
 MRDAStatus MediaResourceDirectAccess_ReceiveFrame(MRDAHandle handle, std::shared_ptr<FrameBufferItem> &outputFrameData)
 {
-    EncodeTask* encodeTask = (EncodeTask*)handle;
-    if (encodeTask == nullptr)
+    MediaTask* mediaTask = (MediaTask*)handle;
+    if (mediaTask == nullptr)
     {
-        MRDA_LOG(LOG_ERROR, "Invalid EncodeTask handle");
+        MRDA_LOG(LOG_ERROR, "Invalid mediaTask handle");
         return MRDA_STATUS_INVALID_HANDLE;
     }
 
-    return encodeTask->ReceiveFrame(outputFrameData);
+    return mediaTask->ReceiveFrame(outputFrameData);
 }

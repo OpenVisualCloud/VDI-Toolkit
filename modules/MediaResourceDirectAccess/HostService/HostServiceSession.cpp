@@ -202,14 +202,15 @@ MRDAStatus HostServiceSession::MakeMediaParamsBack(const MRDA::MediaParams* mrda
         MRDA_LOG(LOG_ERROR, "invalid input media params!");
         return MRDA_STATUS_INVALID_DATA;
     }
+    // share memory info
     MRDA::ShareMemoryInfo *mrda_shmInfo = (const_cast<MRDA::MediaParams*>(mrda_mediaParams))->mutable_share_memory_info();
-    MRDA::EncodeParams *mrda_encParams = (const_cast<MRDA::MediaParams*>(mrda_mediaParams))->mutable_enc_params();
     params->shareMemoryInfo.totalMemorySize = mrda_shmInfo->total_memory_size();
     params->shareMemoryInfo.bufferNum = mrda_shmInfo->buffer_num();
     params->shareMemoryInfo.bufferSize = mrda_shmInfo->buffer_size();
     params->shareMemoryInfo.in_mem_dev_path = mrda_shmInfo->in_mem_dev_path();
     params->shareMemoryInfo.out_mem_dev_path = mrda_shmInfo->out_mem_dev_path();
 
+    MRDA::EncodeParams *mrda_encParams = (const_cast<MRDA::MediaParams*>(mrda_mediaParams))->mutable_enc_params();
     params->encodeParams.codec_id = static_cast<StreamCodecID>(mrda_encParams->codec_id());
     params->encodeParams.gop_size = mrda_encParams->gop_size();
     params->encodeParams.async_depth = mrda_encParams->async_depth();
@@ -225,6 +226,16 @@ MRDAStatus HostServiceSession::MakeMediaParamsBack(const MRDA::MediaParams* mrda
     params->encodeParams.codec_profile = static_cast<CodecProfile>(mrda_encParams->codec_profile());
     params->encodeParams.max_b_frames = mrda_encParams->max_b_frames();
     params->encodeParams.frame_num = mrda_encParams->frame_num();
+
+    MRDA::DecodeParams *mrda_decParams = (const_cast<MRDA::MediaParams*>(mrda_mediaParams))->mutable_dec_params();
+    params->decodeParams.codec_id = static_cast<StreamCodecID>(mrda_decParams->codec_id());
+    params->decodeParams.framerate_num = mrda_decParams->framerate_num();
+    params->decodeParams.framerate_den = mrda_decParams->framerate_den();
+    params->decodeParams.frame_width = mrda_decParams->frame_width();
+    params->decodeParams.frame_height = mrda_decParams->frame_height();
+    params->decodeParams.color_format = static_cast<ColorFormat>(mrda_decParams->color_format());
+    params->decodeParams.frame_num = mrda_decParams->frame_num();
+
     return MRDA_STATUS_SUCCESS;
 }
 

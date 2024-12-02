@@ -354,7 +354,7 @@ void* HostFFmpegEncodeService::EncodeThread()
                 frame = m_inFrameBufferDataList.front();
                 m_inFrameBufferDataList.pop_front();
 #ifdef _ENABLE_TRACE_
-                if (m_mediaParams != nullptr) MRDA_LOG(LOG_INFO, "Encoding trace log: pop front frame in host encoding service input queue, pts: %lu, in dev path: %s", frame->Pts(), m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
+                if (m_mediaParams != nullptr) MRDA_LOG(LOG_INFO, "MRDA trace log: pop front frame in host encoding service input queue, pts: %lu, in dev path: %s", frame->Pts(), m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
 #endif
                 if (frame->IsEOS())
                 {
@@ -545,7 +545,7 @@ MRDAStatus HostFFmpegEncodeService::EncodeOneFrame(AVFrame* pSurface)
         return MRDA_STATUS_INVALID_DATA;
     }
 #ifdef _ENABLE_TRACE_
-    if (m_mediaParams != nullptr && pSurface != nullptr) MRDA_LOG(LOG_INFO, "Encoding trace log: begin avcodec send frame in FFmpeg encode service, pts: %lu, in dev path: %s", pSurface->pts, m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
+    if (m_mediaParams != nullptr && pSurface != nullptr) MRDA_LOG(LOG_INFO, "MRDA trace log: begin avcodec send frame in FFmpeg encode service, pts: %lu, in dev path: %s", pSurface->pts, m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
 #endif
     if (avcodec_send_frame(m_avctx, pSurface) < 0)
     {
@@ -583,7 +583,7 @@ MRDAStatus HostFFmpegEncodeService::EncodeOneFrame(AVFrame* pSurface)
         else
         {
 #ifdef _ENABLE_TRACE_
-            if (m_mediaParams != nullptr) MRDA_LOG(LOG_INFO, "Encoding trace log: complete avcodec receive packet in FFmpeg encode service, pts: %lu, in dev path: %s", av_pkt->pts, m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
+            if (m_mediaParams != nullptr) MRDA_LOG(LOG_INFO, "MRDA trace log: complete avcodec receive packet in FFmpeg encode service, pts: %lu, in dev path: %s", av_pkt->pts, m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
 #endif
             WriteToOutputShareMemoryBuffer(av_pkt);
             av_packet_unref(av_pkt);
@@ -631,7 +631,7 @@ MRDAStatus HostFFmpegEncodeService::WriteToOutputShareMemoryBuffer(AVPacket* pBS
     fwrite(pBS->data, 1, pBS->size, debug_file);
     // update output buffer list
 #ifdef _ENABLE_TRACE_
-    if (m_mediaParams != nullptr) MRDA_LOG(LOG_INFO, "Encoding trace log: push back frame in host encoding service output queue, pts: %lu, in dev path: %s", data->Pts(), m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
+    if (m_mediaParams != nullptr) MRDA_LOG(LOG_INFO, "MRDA trace log: push back frame in host encoding service output queue, pts: %lu, in dev path: %s", data->Pts(), m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
 #endif
     std::unique_lock<std::mutex> lock(m_outMutex);
     m_outFrameBufferDataList.push_back(data);

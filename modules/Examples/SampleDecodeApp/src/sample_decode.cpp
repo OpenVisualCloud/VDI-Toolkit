@@ -27,24 +27,46 @@
  */
 
 //!
-//! \file sample_encode.cpp
-//! \brief a simple sample encode application to demonstrate MRDA API interface usage.
-//! \date 2024-04-15
+//! \file sample_decode.cpp
+//! \brief a simple sample decode application to demonstrate MRDA API interface usage.
+//! \date 2024-11-12
 //!
 
 
-#include "../utils/common.h"
+#include "common.h"
+
+extern "C" {
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+}
 
 // #pragma comment(lib, "libWinGuest.lib")
 
-#define MULTITHREADENCODING 1
+#define MULTITHREADDECODING 1
 
 #include <thread>
 #include <chrono>
 
-MRDAStatus ReadRawFrame(FILE *f, FrameBufferItem *data, ColorFormat format)
+MRDAStatus OpenFileToInputCtx(const char *file_name, AVFormatContext **input_ctx)
 {
-    if (f == nullptr)
+    if (file_name == nullptr)
+    {
+        MRDA_LOG(LOG_ERROR, "ERROR: invalid input file name");
+        return MRDA_STATUS_INVALID_DATA;
+    }
+
+    if (avformat_open_input(input_ctx, file_name, nullptr, nullptr) != 0)
+    {
+        MRDA_LOG(LOG_ERROR, "ERROR: failed to open input file");
+        return MRDA_STATUS_INVALID_DATA;
+    }
+
+    return MRDA_STATUS_SUCCESS;
+}
+
+MRDAStatus ReadFrame(AVFormatContext *input_ctx, FrameBufferItem *data)
+{
+    if (input_ctx == nullptr)
     {
         MRDA_LOG(LOG_ERROR, "ERROR: invalid input file");
         return MRDA_STATUS_INVALID_DATA;
@@ -58,45 +80,26 @@ MRDAStatus ReadRawFrame(FILE *f, FrameBufferItem *data, ColorFormat format)
         return MRDA_STATUS_INVALID_DATA;
     }
 
-    int frame_size = 0;
-    switch (format)
+    AVPacket *av_packet = av_packet_alloc();
+
+    int ret = av_read_frame(input_ctx, av_packet);
+    if (ret < 0)
     {
-    case ColorFormat::COLOR_FORMAT_NV12:
-    case ColorFormat::COLOR_FORMAT_YUV420P:
-        frame_size = data->width * data->height * 3 / 2;
-        break;
-    case ColorFormat::COLOR_FORMAT_RGBA32:
-        frame_size = data->width * data->height * 4;
-        break;
-    case ColorFormat::COLOR_FORMAT_NONE:
-    default:
-        MRDA_LOG(LOG_ERROR, "ERROR: invalid color format");
+        MRDA_LOG(LOG_ERROR, "ERROR: failed to read frame");
+        av_packet_free(&av_packet);
         return MRDA_STATUS_INVALID_DATA;
     }
 
-    static long file_size = 0;
-    static int total_frames = 0;
-    if (file_size == 0 || total_frames == 0)
-    {
-        fseek(f, 0, SEEK_END);
-        file_size = ftell(f);
-        total_frames = file_size / frame_size;
-    }
-
-    // get current frame offset
-    long current_frame_offset = (cnt % total_frames) * frame_size;
-
-    fseek(f, current_frame_offset, SEEK_SET);
-
-    // read frame to data buffer
-    fread(data->bufferItem->buf_ptr, 1, frame_size, f);
-    data->bufferItem->occupied_size = frame_size;
-
+    memcpy(data->bufferItem->buf_ptr + sizeof(data->bufferItem->state), av_packet->data, av_packet->size);
+    data->bufferItem->occupied_size = av_packet->size;
     data->pts = cnt++;
+
+    av_packet_free(&av_packet);
+
     return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus WriteEncodedFrame(FILE *f, FrameBufferItem *data)
+MRDAStatus WriteDecodedFrame(FILE *f, FrameBufferItem *data)
 {
     if (f == nullptr)
     {
@@ -115,7 +118,7 @@ MRDAStatus WriteEncodedFrame(FILE *f, FrameBufferItem *data)
     return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus EncodeFrame(MRDAHandle mrda_handle, FILE *sink, std::shared_ptr<FrameBufferItem> inBuffer, uint64_t *cur_pts)
+MRDAStatus DecodeFrame(MRDAHandle mrda_handle, FILE *sink, std::shared_ptr<FrameBufferItem> inBuffer, uint64_t *cur_pts)
 {
     // 1. send input frame
     if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_SendFrame(mrda_handle, inBuffer))
@@ -142,7 +145,7 @@ MRDAStatus EncodeFrame(MRDAHandle mrda_handle, FILE *sink, std::shared_ptr<Frame
         // success
         if (outBuffer->pts >= 0)
         {
-            WriteEncodedFrame(sink, outBuffer.get());
+            WriteDecodedFrame(sink, outBuffer.get());
             *cur_pts = outBuffer->pts;
             // MRDA_LOG(LOG_INFO, "Receive frame at pts: %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
         }
@@ -157,10 +160,10 @@ MRDAStatus EncodeFrame(MRDAHandle mrda_handle, FILE *sink, std::shared_ptr<Frame
     return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus EncodeFrameAsync(MRDAHandle mrda_handle, std::shared_ptr<FrameBufferItem> inBuffer)
+MRDAStatus DecodeFrameAsync(MRDAHandle mrda_handle, std::shared_ptr<FrameBufferItem> inBuffer)
 {
 #ifdef _ENABLE_TRACE_
-    if (inBuffer != nullptr) MRDA_LOG(LOG_INFO, "Encoding trace log: begin send frame in sample encode, pts: %llu", inBuffer->pts);
+    if (inBuffer != nullptr) MRDA_LOG(LOG_INFO, "MRDA trace log: begin send frame in sample decode, pts: %llu", inBuffer->pts);
 #endif
     // 1. send input frame
     if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_SendFrame(mrda_handle, inBuffer))
@@ -195,9 +198,9 @@ void ReceiveFrameThread(MRDAHandle mrda_handle, FILE *sink, uint64_t frameNum)
         if (outBuffer->pts >= 0)
         {
 #ifdef _ENABLE_TRACE_
-            MRDA_LOG(LOG_INFO, "Encoding trace log: complete receive frame in sample encode, pts: %llu", outBuffer->pts);
+            MRDA_LOG(LOG_INFO, "MRDA trace log: complete receive frame in sample decode, pts: %llu", outBuffer->pts);
 #endif
-            WriteEncodedFrame(sink, outBuffer.get());
+            WriteDecodedFrame(sink, outBuffer.get());
             cur_pts = outBuffer->pts;
             // MRDA_LOG(LOG_INFO, "Receive frame at pts: %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
         }
@@ -232,7 +235,7 @@ MRDAStatus FlushFrame(MRDAHandle mrda_handle, FILE *sink, uint64_t cur_pts, uint
         // success
         if (outBuffer->pts >= 0)
         {
-            WriteEncodedFrame(sink, outBuffer.get());
+            WriteDecodedFrame(sink, outBuffer.get());
             // MRDA_LOG(LOG_INFO, "In flush process: Receive frame at pts: %llu", outBuffer->pts);
         }
         cur_pts = outBuffer->pts;
@@ -261,24 +264,16 @@ typedef struct INPUTCONFIG
     std::string  out_mem_dev_path;   //!< output memory dev path
     uint32_t     in_mem_dev_slot_number;    //!< input memory dev slot number
     uint32_t     out_mem_dev_slot_number;   //!< output memory dev slot number
-    // encoding params
+    // decoding params
     uint32_t      frameNum;
     StreamCodecID codec_id;             //!< codec id
-    uint32_t      gop_size;             //!< the distance between two adjacent intra frame
-    uint32_t      async_depth;          //!< Specifies how many asynchronous operations an application performs
-    TargetUsage   target_usage;         //!< the preset for quality and performance balance,
-                                        //!< [0-12], 0 is best quality, 12 is best performance
-    uint32_t rc_mode;                   //!< rate control mode, 0 is CQP mode and 1 is VBR mode
-    uint32_t qp;                        //!< quantization value under CQP mode
     uint32_t bit_rate;                  //!< bitrate value under VBR mode
     int32_t  framerate_num;             //!< frame rate numerator
     int32_t  framerate_den;             //!< frame rate denominator
     uint32_t frame_width;               //!< width of frame
     uint32_t frame_height;              //!< height of frame
     ColorFormat  color_format;          //!< pixel color format
-    CodecProfile codec_profile;         //!< the profile to create bitstream
-    uint32_t max_b_frames;              //!< maximum number of B-frames between non-B-frames
-    TASKTYPE encode_type;               //!< encode type, 0 is ffmpeg encode, 1 is oneVPL encode
+    TASKTYPE decode_type;               //!< decode type, 0 is ffmpeg decode, 1 is oneVPL decode
 } InputConfig;
 
 StreamCodecID StringToCodecID(const char *codec_id)
@@ -371,7 +366,7 @@ CodecProfile StringToCodecProfile(const char *codec_profile)
 
 void PrintHelp()
 {
-    printf("%s", "Usage: .\\MRDASampleApp.exe [<options>]\n");
+    printf("%s", "Usage: .\\MRDASampleDecodeApp.exe [<options>]\n");
     printf("%s", "Options: \n");
     printf("%s", "    [--help]                                 - print help README document. \n");
     printf("%s", "    [--hostSessionAddr host_session_address] - specifies host session address. \n");
@@ -386,34 +381,26 @@ void PrintHelp()
     printf("%s", "    [--outDevSlotNumber out_dev_slot_number] - specifies output device slot number. \n");
     printf("%s", "    [--frameNum number_of_frames]            - specifies number of frames to process. \n");
     printf("%s", "    [--codecId codec_identifier]             - specifies the codec identifier. option: h265/hevc | h264/avc \n");
-    printf("%s", "    [--gopSize group_of_pictures_size]       - specifies the size of group of pictures. \n");
-    printf("%s", "    [--asyncDepth asynchronous_depth]        - specifies the asynchronous depth. \n");
-    printf("%s", "    [--targetUsage target_usage]             - specifies the target usage. option: balanced | quality | speed \n");
-    printf("%s", "    [--rcMode rate_control_mode]             - specifies the rate control mode. option: 0(CQP), 1(VBR) \n");
-    printf("%s", "    [--bitrate bitrate value if rcMode is 1] - specifies the bitrate. \n");
-    printf("%s", "    [--qp qp value if rcMode is 0]           - specifies the qp value. \n");
     printf("%s", "    [--fps frames_per_second]                - specifies the frames per second. \n");
     printf("%s", "    [--width frame_width]                    - specifies the frame width. \n");
     printf("%s", "    [--height frame_height]                  - specifies the frame height. \n");
     printf("%s", "    [--colorFormat color_format]             - specifies the color format. option: yuv420p, nv12, rgb32 \n");
-    printf("%s", "    [--codecProfile codec_profile]           - specifies the codec profile. option: avc:main, avc:high, hevc:main \n");
-    printf("%s", "    [--maxBFrames max_b_frames]              - specifies the maximum number of B frames. \n");
-    printf("%s", "    [--encodeType encode_type]               - specifies the encode type. option: ffmpeg, oneVPL \n");
-    printf("%s", "Examples: ./MRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051 -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --inDevSlotNumber 11 --outDevSlotNumber 12 --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1 --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --maxBFrames 0 --encodeType oneVPL \n");
+    printf("%s", "    [--decodeType decode_type]               - specifies the decode type. option: ffmpeg, oneVPL \n");
+    printf("%s", "Examples: ./MRDASampleDecodeApp.exe --hostSessionAddr 127.0.0.1:50051 -i input.h265 -o output.raw --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --inDevSlotNumber 11 --outDevSlotNumber 12 --frameNum 3000 --codecId h265 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --decodeType ffmpeg \n");
 }
 
-TASKTYPE StringToEncodeType(const char *encode_type_str)
+TASKTYPE StringToDecodeType(const char *decode_type_str)
 {
-    TASKTYPE encode_type = TASKTYPE::NONE;
-    if (0 == strcmp(encode_type_str, "ffmpeg"))
+    TASKTYPE decode_type = TASKTYPE::NONE;
+    if (0 == strcmp(decode_type_str, "ffmpeg"))
     {
-        encode_type = TASKTYPE::taskFFmpegEncode;
+        decode_type = TASKTYPE::taskFFmpegDecode;
     }
-    else if (0 == strcmp(encode_type_str, "oneVPL"))
+    else if (0 == strcmp(decode_type_str, "oneVPL"))
     {
-        encode_type = TASKTYPE::taskOneVPLEncode;
+        decode_type = TASKTYPE::taskOneVPLDecode;
     }
-    return encode_type;
+    return decode_type;
 }
 
 bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
@@ -449,18 +436,6 @@ bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
             inputConfig->frameNum = static_cast<uint32_t>(std::atoi(argv[++i]));
         } else if (strcmp(argv[i], "--codecId") == 0 && i + 1 < argc) {
             inputConfig->codec_id = StringToCodecID(argv[++i]);
-        } else if (strcmp(argv[i], "--gopSize") == 0 && i + 1 < argc) {
-            inputConfig->gop_size = static_cast<uint32_t>(std::atoi(argv[++i]));
-        } else if (strcmp(argv[i], "--asyncDepth") == 0 && i + 1 < argc) {
-            inputConfig->async_depth = static_cast<uint32_t>(std::atoi(argv[++i]));
-        } else if (strcmp(argv[i], "--targetUsage") == 0 && i + 1 < argc) {
-            inputConfig->target_usage = StringToTargetUsage(argv[++i]);
-        } else if (strcmp(argv[i], "--rcMode") == 0 && i + 1 < argc) {
-            inputConfig->rc_mode = static_cast<uint32_t>(std::atoi(argv[++i]));
-        } else if (inputConfig->rc_mode == 0 && strcmp(argv[i], "--qp") == 0 && i + 1 < argc) {
-            inputConfig->qp = static_cast<uint32_t>(std::atoi(argv[++i]));
-        } else if (inputConfig->rc_mode == 1 && strcmp(argv[i], "--bitrate") == 0 && i + 1 < argc) {
-            inputConfig->bit_rate = static_cast<uint32_t>(std::atoi(argv[++i]));
         } else if (strcmp(argv[i], "--fps") == 0 && i + 1 < argc) {
             inputConfig->framerate_num = static_cast<uint32_t>(std::atoi(argv[++i]));
             inputConfig->framerate_den = 1;
@@ -470,12 +445,8 @@ bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
             inputConfig->frame_height = static_cast<uint32_t>(std::atoi(argv[++i]));
         } else if (strcmp(argv[i], "--colorFormat") == 0 && i + 1 < argc) {
             inputConfig->color_format = StringToColorFormat(argv[++i]);
-        } else if (strcmp(argv[i], "--codecProfile") == 0 && i + 1 < argc) {
-            inputConfig->codec_profile = StringToCodecProfile(argv[++i]);
-        } else if (strcmp(argv[i], "--maxBFrames") == 0 && i + 1 < argc) {
-            inputConfig->max_b_frames = static_cast<uint32_t>(std::atoi(argv[++i]));
-        } else if (strcmp(argv[i], "--encodeType") == 0 && i + 1 < argc) {
-            inputConfig->encode_type = StringToEncodeType(argv[++i]);
+        } else if (strcmp(argv[i], "--decodeType") == 0 && i + 1 < argc) {
+            inputConfig->decode_type = StringToDecodeType(argv[++i]);
         } else if (strcmp(argv[i], "--help") == 0 && i + 1 < argc) {
             PrintHelp();
             return false;
@@ -505,21 +476,13 @@ MRDAStatus CreateMediaParams(InputConfig *inputConfig, MediaParams *mediaParams)
     mediaParams->shareMemoryInfo.in_mem_dev_slot_number = inputConfig->in_mem_dev_slot_number;
     mediaParams->shareMemoryInfo.out_mem_dev_slot_number = inputConfig->out_mem_dev_slot_number;
 
-    mediaParams->encodeParams.codec_id = inputConfig->codec_id;
-    mediaParams->encodeParams.gop_size = inputConfig->gop_size;
-    mediaParams->encodeParams.async_depth = inputConfig->async_depth;
-    mediaParams->encodeParams.target_usage = inputConfig->target_usage;
-    mediaParams->encodeParams.rc_mode = inputConfig->rc_mode;
-    mediaParams->encodeParams.qp = inputConfig->qp;
-    mediaParams->encodeParams.bit_rate = inputConfig->bit_rate;
-    mediaParams->encodeParams.framerate_num = inputConfig->framerate_num;
-    mediaParams->encodeParams.framerate_den = inputConfig->framerate_den;
-    mediaParams->encodeParams.frame_width = inputConfig->frame_width;
-    mediaParams->encodeParams.frame_height = inputConfig->frame_height;
-    mediaParams->encodeParams.color_format = inputConfig->color_format;
-    mediaParams->encodeParams.codec_profile = inputConfig->codec_profile;
-    mediaParams->encodeParams.max_b_frames = inputConfig->max_b_frames;
-    mediaParams->encodeParams.frame_num = inputConfig->frameNum;
+    mediaParams->decodeParams.codec_id = inputConfig->codec_id;
+    mediaParams->decodeParams.framerate_num = inputConfig->framerate_num;
+    mediaParams->decodeParams.framerate_den = inputConfig->framerate_den;
+    mediaParams->decodeParams.frame_width = inputConfig->frame_width;
+    mediaParams->decodeParams.frame_height = inputConfig->frame_height;
+    mediaParams->decodeParams.color_format = inputConfig->color_format;
+    mediaParams->decodeParams.frame_num = inputConfig->frameNum;
     return MRDA_STATUS_SUCCESS;
 }
 
@@ -533,7 +496,7 @@ int main(int argc, char **argv)
     }
 
     TaskInfo taskInfo = {};
-    taskInfo.taskType = inputConfig.encode_type;
+    taskInfo.taskType = inputConfig.decode_type;
     taskInfo.taskStatus = TASKStatus::TASK_STATUS_UNKNOWN;
     taskInfo.taskID = 0;
     taskInfo.taskDevice.deviceType = DeviceType::NONE;
@@ -565,16 +528,23 @@ int main(int argc, char **argv)
         return MRDA_STATUS_OPERATION_FAIL;
     }
     // 4. open source and sink file
-    FILE *source = nullptr;
-    source = fopen(inputConfig.sourceFile.c_str(), "rb");
+    // FILE *source = nullptr;
+    // source = fopen(inputConfig.sourceFile.c_str(), "rb");
     FILE *sink = nullptr;
     sink = fopen(inputConfig.sinkFile.c_str(), "wb");
-    if (source == nullptr || sink == nullptr)
+    if (sink == nullptr)
     {
         MRDA_LOG(LOG_ERROR, "open file failed!");
         return MRDA_STATUS_OPERATION_FAIL;
     }
-#if MULTITHREADENCODING == 1
+
+    AVFormatContext *input_ctx = nullptr;
+    if (MRDA_STATUS_SUCCESS != OpenFileToInputCtx(inputConfig.sourceFile.c_str(), &input_ctx))
+    {
+        MRDA_LOG(LOG_ERROR, "open file to input ctx failed!");
+        return MRDA_STATUS_OPERATION_FAIL;
+    }
+#if MULTITHREADDECODING == 1
     std::thread receiveThread(ReceiveFrameThread, mrda_handle, sink, inputConfig.frameNum);
 #endif
     // 5. receive main loop
@@ -600,22 +570,22 @@ int main(int argc, char **argv)
             continue;
         }
         // 5.2 fill input buffer
-        if (MRDA_STATUS_SUCCESS != ReadRawFrame(source, inBuffer.get(), inputConfig.color_format))
+        if (MRDA_STATUS_SUCCESS != ReadFrame(input_ctx, inBuffer.get()))
         {
-            MRDA_LOG(LOG_WARNING, "read raw frame invalid!");
+            MRDA_LOG(LOG_WARNING, "read frame invalid!");
             break;
         }
-        // 5.3 encode one frame
-#if MULTITHREADENCODING == 1
-        if (MRDA_STATUS_SUCCESS != EncodeFrameAsync(mrda_handle, inBuffer))
+        // 5.3 decode one frame
+#if MULTITHREADDECODING == 1
+        if (MRDA_STATUS_SUCCESS != DecodeFrameAsync(mrda_handle, inBuffer))
         {
-            MRDA_LOG(LOG_ERROR, "encode frame failed!");
+            MRDA_LOG(LOG_ERROR, "decode frame failed!");
             break;
         }
 #else
-        if (MRDA_STATUS_SUCCESS != EncodeFrame(mrda_handle, sink, inBuffer, &cur_pts))
+        if (MRDA_STATUS_SUCCESS != DecodeFrame(mrda_handle, sink, inBuffer, &cur_pts))
         {
-            MRDA_LOG(LOG_ERROR, "encode frame failed!");
+            MRDA_LOG(LOG_ERROR, "decode frame failed!");
             break;
         }
 #endif
@@ -635,19 +605,19 @@ int main(int argc, char **argv)
             singleExceedTime = singleCost + singleExceedTime - singleIteral;
         }
     }
-    // 6. flush encoder
+    // 6. flush decoder
     // 6.1 send last empty frame to trigger EOS
-#if MULTITHREADENCODING == 1
-    if (MRDA_STATUS_SUCCESS != EncodeFrameAsync(mrda_handle, nullptr))
+#if MULTITHREADDECODING == 1
+    if (MRDA_STATUS_SUCCESS != DecodeFrameAsync(mrda_handle, nullptr))
     {
-        MRDA_LOG(LOG_ERROR, "encode frame failed!");
+        MRDA_LOG(LOG_ERROR, "decode frame failed!");
         return MRDA_STATUS_OPERATION_FAIL;
     }
     receiveThread.join();
 #else
-    if (MRDA_STATUS_SUCCESS != EncodeFrame(mrda_handle, sink, nullptr, &cur_pts))
+    if (MRDA_STATUS_SUCCESS != DecodeFrame(mrda_handle, sink, nullptr, &cur_pts))
     {
-        MRDA_LOG(LOG_ERROR, "encode frame failed!");
+        MRDA_LOG(LOG_ERROR, "decode frame failed!");
         return MRDA_STATUS_OPERATION_FAIL;
     }
     // 6.2 receive process until all frames are received
@@ -659,10 +629,12 @@ int main(int argc, char **argv)
 #endif
     uint64_t end = std::chrono::duration_cast<std::chrono::milliseconds>(clock.now().time_since_epoch()).count();
     float total_fps = static_cast<float>(curFrameNum) * 1000 / (end - start);
-    MRDA_LOG(LOG_INFO, "Encoding trace log: total encode frame num: %d, fps: %f", curFrameNum, total_fps);
+    MRDA_LOG(LOG_INFO, "MRDA trace log: total decode frame num: %d, fps: %f", curFrameNum, total_fps);
 
     fclose(sink);
-    fclose(source);
+    avformat_close_input(&input_ctx);
+
+    // fclose(source);
     // 7. stop mrda
     if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_Stop(mrda_handle))
     {

@@ -38,6 +38,7 @@ VDI_NS_BEGIN
 TaskManager::TaskManager():
     m_taskInfo(nullptr),
     m_encodeParams(nullptr),
+    m_decodeParams(nullptr),
     m_shareMemInfo(nullptr),
     m_inMemoryPool(nullptr),
     m_outMemoryPool(nullptr),
@@ -114,9 +115,10 @@ MRDAStatus TaskManager::SetInitParams(const MediaParams *params)
 
     m_encodeParams = std::make_shared<EncodeParams>(params->encodeParams);
     m_shareMemInfo = std::make_shared<ShareMemoryInfo>(params->shareMemoryInfo);
-    if (m_encodeParams == nullptr || m_shareMemInfo == nullptr)
+    m_decodeParams = std::make_shared<DecodeParams>(params->decodeParams);
+    if (m_encodeParams == nullptr || m_shareMemInfo == nullptr || m_decodeParams == nullptr)
     {
-        MRDA_LOG(LOG_ERROR, "Failed to set encode params or share memory info!");
+        MRDA_LOG(LOG_ERROR, "Failed to set codec params or share memory info!");
         return MRDA_STATUS_INVALID_DATA;
     }
     // 1. init AND allocate in/out memory pool
@@ -219,17 +221,31 @@ MRDAStatus TaskManager::GetOneInputBuffer(std::shared_ptr<FrameBufferData> &data
         return MRDA_STATUS_OPERATION_FAIL;
     }
 
-    if (m_encodeParams == nullptr) return MRDA_STATUS_INVALID_DATA;
-    if (m_taskInfo != nullptr &&
+    if (m_encodeParams != nullptr && m_taskInfo != nullptr &&
         (m_taskInfo->taskType == TASKTYPE::taskFFmpegEncode
         || m_taskInfo->taskType == TASKTYPE::taskOneVPLEncode)
        )
+    {
         buffer->SetStreamType(InputStreamType::RAW);
+        buffer->SetWidth(m_encodeParams->frame_width);
+        buffer->SetHeight(m_encodeParams->frame_height);
+        buffer->SetPts(0); // will be filled in the following process
+   }
+    else if (m_decodeParams != nullptr && m_taskInfo != nullptr &&
+        (m_taskInfo->taskType == TASKTYPE::taskFFmpegDecode
+        || m_taskInfo->taskType == TASKTYPE::taskOneVPLDecode)
+        )
+    {
+        buffer->SetStreamType(InputStreamType::ENCODED);
+        buffer->SetWidth(m_decodeParams->frame_width);
+        buffer->SetHeight(m_decodeParams->frame_height);
+        buffer->SetPts(0); // will be filled in the following process
+    }
     else
-        buffer->SetStreamType(InputStreamType::UNKNOWN);
-    buffer->SetWidth(m_encodeParams->frame_width);
-    buffer->SetHeight(m_encodeParams->frame_height);
-    buffer->SetPts(0); // default
+    {
+        MRDA_LOG(LOG_ERROR, "Get one input buffer in task manager failed!");
+        return MRDA_STATUS_INVALID_DATA;
+    }
 
     data = buffer;
 

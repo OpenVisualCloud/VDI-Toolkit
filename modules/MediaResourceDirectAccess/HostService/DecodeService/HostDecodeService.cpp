@@ -26,16 +26,16 @@
  */
 
 //!
-//! \file HostEncodeService.cpp
+//! \file HostDecodeService.cpp
 //! \brief
-//! \date 2024-06-27
+//! \date 2024-11-12
 //!
 
-#include "HostEncodeService.h"
+#include "HostDecodeService.h"
 
 VDI_NS_BEGIN
 
-HostEncodeService::HostEncodeService()
+HostDecodeService::HostDecodeService()
 {
     m_isStop = false;
     m_isEOS = false;
@@ -44,7 +44,7 @@ HostEncodeService::HostEncodeService()
     m_outFrameBufferDataList.clear();
 }
 
-HostEncodeService::~HostEncodeService()
+HostDecodeService::~HostDecodeService()
 {
     if (m_inShmMem != MAP_FAILED) munmap(m_inShmMem, m_inShmSize);
     if (m_outShmMem != MAP_FAILED) munmap(m_outShmMem, m_outShmSize);
@@ -54,7 +54,7 @@ HostEncodeService::~HostEncodeService()
     m_outFrameBufferDataList.clear();
 }
 
-MRDAStatus HostEncodeService::SetInitParams(MediaParams *params)
+MRDAStatus HostDecodeService::SetInitParams(MediaParams *params)
 {
     if (params == nullptr)
     {
@@ -62,13 +62,13 @@ MRDAStatus HostEncodeService::SetInitParams(MediaParams *params)
         return MRDA_STATUS_INVALID_DATA;
     }
     m_mediaParams = std::make_unique<MediaParams>();
-    m_mediaParams->encodeParams = params->encodeParams;
+    m_mediaParams->decodeParams = params->decodeParams;
     m_mediaParams->shareMemoryInfo = params->shareMemoryInfo;
 
     return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus HostEncodeService::InitShm()
+MRDAStatus HostDecodeService::InitShm()
 {
     if (m_mediaParams == nullptr)
     {
@@ -93,7 +93,7 @@ MRDAStatus HostEncodeService::InitShm()
     return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus HostEncodeService::SendInputData(std::shared_ptr<FrameBufferData> data)
+MRDAStatus HostDecodeService::SendInputData(std::shared_ptr<FrameBufferData> data)
 {
     std::unique_lock<std::mutex> lock(m_inMutex);
     if (data == nullptr)
@@ -102,14 +102,14 @@ MRDAStatus HostEncodeService::SendInputData(std::shared_ptr<FrameBufferData> dat
         return MRDA_STATUS_INVALID_DATA;
     }
 #ifdef _ENABLE_TRACE_
-    if (m_mediaParams != nullptr) MRDA_LOG(LOG_INFO, "MRDA trace log: push back frame in host encoding service input queue, pts: %lu, in dev path: %s", data->Pts(), m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
+    if (m_mediaParams != nullptr) MRDA_LOG(LOG_INFO, "MRDA trace log: push back frame in host decoding service input queue, pts: %lu, in dev path: %s", data->Pts(), m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
 #endif
     m_inFrameBufferDataList.push_back(data);
     // MRDA_LOG(LOG_INFO, "Input frame data size is %d", m_inFrameBufferDataList.size());
     return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus HostEncodeService::ReceiveOutputData(std::shared_ptr<FrameBufferData> &data)
+MRDAStatus HostDecodeService::ReceiveOutputData(std::shared_ptr<FrameBufferData> &data)
 {
     std::unique_lock<std::mutex> lock(m_outMutex);
     if (m_outFrameBufferDataList.empty())
@@ -120,7 +120,7 @@ MRDAStatus HostEncodeService::ReceiveOutputData(std::shared_ptr<FrameBufferData>
     data = m_outFrameBufferDataList.front();
     m_outFrameBufferDataList.pop_front();
 #ifdef _ENABLE_TRACE_
-    if (m_mediaParams != nullptr) MRDA_LOG(LOG_INFO, "MRDA trace log: pop front frame in host encoding service output queue, pts: %lu, in dev path: %s", data->Pts(), m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
+    if (m_mediaParams != nullptr) MRDA_LOG(LOG_INFO, "MRDA trace log: pop front frame in host decoding service output queue, pts: %lu, in dev path: %s", data->Pts(), m_mediaParams->shareMemoryInfo.in_mem_dev_path.c_str());
 #endif
     // MRDA_LOG(LOG_INFO, "Output frame data size is %d, pts %llu", m_outFrameBufferDataList.size(), data->Pts());
     return MRDA_STATUS_SUCCESS;
@@ -128,7 +128,7 @@ MRDAStatus HostEncodeService::ReceiveOutputData(std::shared_ptr<FrameBufferData>
 
 
 
-MRDAStatus HostEncodeService::GetAvailableOutputBufferFrame(std::shared_ptr<FrameBufferData>& pFrame)
+MRDAStatus HostDecodeService::GetAvailableOutputBufferFrame(std::shared_ptr<FrameBufferData>& pFrame)
 {
     // check an available buffer
     bool isBufferAvailable = false;
@@ -145,7 +145,7 @@ MRDAStatus HostEncodeService::GetAvailableOutputBufferFrame(std::shared_ptr<Fram
     return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus HostEncodeService::GetAvailBuffer(std::shared_ptr<FrameBufferData>& pFrame)
+MRDAStatus HostDecodeService::GetAvailBuffer(std::shared_ptr<FrameBufferData>& pFrame)
 {
     if (m_mediaParams == nullptr || m_outShmMem == nullptr)
     {
@@ -171,9 +171,9 @@ MRDAStatus HostEncodeService::GetAvailBuffer(std::shared_ptr<FrameBufferData>& p
             memBuffer->SetOccupiedSize(0);
             memBuffer->SetState(state);
             pFrame = std::make_shared<FrameBufferData>();
-            pFrame->SetWidth(m_mediaParams->encodeParams.frame_width);
-            pFrame->SetHeight(m_mediaParams->encodeParams.frame_height);
-            pFrame->SetStreamType(InputStreamType::RAW);
+            pFrame->SetWidth(m_mediaParams->decodeParams.frame_width);
+            pFrame->SetHeight(m_mediaParams->decodeParams.frame_height);
+            pFrame->SetStreamType(InputStreamType::ENCODED);
             pFrame->SetPts(m_frameNum);
             pFrame->SetEOS(m_isEOS);
             pFrame->SetMemBuffer(memBuffer);

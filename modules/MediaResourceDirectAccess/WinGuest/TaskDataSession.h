@@ -83,6 +83,9 @@ public:
     //!         MRDA_SUCCESS if success, else fail
     //!
     virtual MRDAStatus ReceiveFrame(std::shared_ptr<FrameBufferData> &data) = 0;
+
+protected:
+    std::shared_ptr<TaskInfo> m_taskInfo; //!< the task info
 };
 
 VDI_NS_END

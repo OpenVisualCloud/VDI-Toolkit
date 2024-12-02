@@ -97,8 +97,20 @@ message ShareMemoryInfo
     string out_mem_dev_path = 5;
 }
 
+message DecodeParams
+{
+    uint32 codec_id = 1;
+    int32  framerate_num = 2;
+    int32  framerate_den = 3;
+    uint32 frame_width = 4;
+    uint32 frame_height = 5;
+    uint32 color_format = 6;
+    uint32 frame_num = 7;
+}
+
 message MediaParams
 {
     ShareMemoryInfo share_memory_info = 1;
     EncodeParams enc_params = 2;
+    DecodeParams dec_params = 3;
 }

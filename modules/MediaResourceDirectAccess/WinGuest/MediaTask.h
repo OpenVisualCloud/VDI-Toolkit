@@ -26,7 +26,7 @@
  */
 
 //!
-//! \file EncodeTask.h
+//! \file MediaTask.h
 //! \brief Media Task, called by MRDALib APIs, to setup task manager,
 //!         and to manage media process and media buffer data.
 //! \date 2024-03-29
@@ -42,16 +42,16 @@
 
 VDI_NS_BEGIN
 
-class EncodeTask {
+class MediaTask {
 public:
     //!
     //! \brief Construct a new Media Task object
     //!
-    EncodeTask();
+    MediaTask();
     //!
     //! \brief Destroy the Media Task object
     //!
-    virtual ~EncodeTask() = default;
+    virtual ~MediaTask() = default;
 
     //!
     //! \brief Initialize the Media Task

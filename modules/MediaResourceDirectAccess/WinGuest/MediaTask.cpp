@@ -26,19 +26,19 @@
  */
 
 //!
-//! \file EncodeTask.cpp
+//! \file MediaTask.cpp
 //! \brief implement media task
 //! \date 2024-04-02
 //!
 
-#include "EncodeTask.h"
+#include "MediaTask.h"
 
 VDI_NS_BEGIN
 
-EncodeTask::EncodeTask()
+MediaTask::MediaTask()
     :m_taskManager(nullptr) {}
 
-MRDAStatus EncodeTask::Initialize(const TaskInfo *taskInfo, const ExternalConfig *config)
+MRDAStatus MediaTask::Initialize(const TaskInfo *taskInfo, const ExternalConfig *config)
 {
     // check input paramters
     if (taskInfo == nullptr)
@@ -65,7 +65,7 @@ MRDAStatus EncodeTask::Initialize(const TaskInfo *taskInfo, const ExternalConfig
     return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus EncodeTask::Stop()
+MRDAStatus MediaTask::Stop()
 {
     if (m_taskManager == nullptr)
     {
@@ -76,7 +76,7 @@ MRDAStatus EncodeTask::Stop()
     return m_taskManager->StopTask();
 }
 
-MRDAStatus EncodeTask::Reset(const TaskInfo *taskInfo)
+MRDAStatus MediaTask::Reset(const TaskInfo *taskInfo)
 {
     if (m_taskManager == nullptr)
     {
@@ -87,7 +87,7 @@ MRDAStatus EncodeTask::Reset(const TaskInfo *taskInfo)
     return m_taskManager->ResetTask(taskInfo);
 }
 
-MRDAStatus EncodeTask::Destroy()
+MRDAStatus MediaTask::Destroy()
 {
     if (m_taskManager == nullptr)
     {
@@ -98,7 +98,7 @@ MRDAStatus EncodeTask::Destroy()
     return m_taskManager->Destroy();
 }
 
-MRDAStatus EncodeTask::SetInitParams(const MediaParams *params)
+MRDAStatus MediaTask::SetInitParams(const MediaParams *params)
 {
     if (MRDA_STATUS_SUCCESS != CheckMediaParams(params))
     {
@@ -115,7 +115,7 @@ MRDAStatus EncodeTask::SetInitParams(const MediaParams *params)
     return m_taskManager->SetInitParams(params);
 }
 
-MRDAStatus EncodeTask::SendFrame(const std::shared_ptr<FrameBufferItem> data)
+MRDAStatus MediaTask::SendFrame(const std::shared_ptr<FrameBufferItem> data)
 {
     if (m_taskManager == nullptr)
     {
@@ -134,7 +134,7 @@ MRDAStatus EncodeTask::SendFrame(const std::shared_ptr<FrameBufferItem> data)
     return m_taskManager->SendFrame(frameData);
 }
 
-MRDAStatus EncodeTask::ReceiveFrame(std::shared_ptr<FrameBufferItem> &data)
+MRDAStatus MediaTask::ReceiveFrame(std::shared_ptr<FrameBufferItem> &data)
 {
     if (m_taskManager == nullptr)
     {
@@ -165,7 +165,7 @@ MRDAStatus EncodeTask::ReceiveFrame(std::shared_ptr<FrameBufferItem> &data)
     return status;
 }
 
-MRDAStatus EncodeTask::GetOneInputBuffer(std::shared_ptr<FrameBufferItem> &data)
+MRDAStatus MediaTask::GetOneInputBuffer(std::shared_ptr<FrameBufferItem> &data)
 {
     if (m_taskManager == nullptr)
     {
@@ -198,7 +198,7 @@ MRDAStatus EncodeTask::GetOneInputBuffer(std::shared_ptr<FrameBufferItem> &data)
     return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus EncodeTask::ReleaseOutputBuffer(std::shared_ptr<FrameBufferItem> data)
+MRDAStatus MediaTask::ReleaseOutputBuffer(std::shared_ptr<FrameBufferItem> data)
 {
     if (m_taskManager == nullptr)
     {
@@ -217,7 +217,7 @@ MRDAStatus EncodeTask::ReleaseOutputBuffer(std::shared_ptr<FrameBufferItem> data
     return m_taskManager->ReleaseOneOutputBuffer(frameData);
 }
 
-MRDAStatus EncodeTask::CheckMediaParams(const MediaParams *params)
+MRDAStatus MediaTask::CheckMediaParams(const MediaParams *params)
 {
     if (params == nullptr)
     {
@@ -226,14 +226,17 @@ MRDAStatus EncodeTask::CheckMediaParams(const MediaParams *params)
     }
 
     // check encode params
-    if (params->encodeParams.frame_width <= 0 || params->encodeParams.frame_height <= 0
+    if ((m_taskManager->TaskType() == TASKTYPE::taskEncode ||
+        m_taskManager->TaskType() == TASKTYPE::taskFFmpegEncode ||
+        m_taskManager->TaskType() == TASKTYPE::taskOneVPLEncode) &&
+     (params->encodeParams.frame_width <= 0 || params->encodeParams.frame_height <= 0
         || params->encodeParams.framerate_den <= 0 || params->encodeParams.gop_size <= 0
         || (params->encodeParams.rc_mode == 1 && params->encodeParams.bit_rate <= 0)
         || (params->encodeParams.rc_mode == 0 && params->encodeParams.qp <= 0)
         || params->encodeParams.codec_id == StreamCodecID::CodecID_NONE
         || params->encodeParams.target_usage == TargetUsage::Unknown
         || params->encodeParams.color_format == ColorFormat::COLOR_FORMAT_NONE
-        || params->encodeParams.codec_profile == CodecProfile::PROFILE_NONE)
+        || params->encodeParams.codec_profile == CodecProfile::PROFILE_NONE))
     {
         MRDA_LOG(LOG_ERROR, "invalid encode parameters setting!");
         return MRDA_STATUS_INVALID_DATA;
@@ -249,6 +252,20 @@ MRDAStatus EncodeTask::CheckMediaParams(const MediaParams *params)
         MRDA_LOG(LOG_ERROR, "invalid share memory parameters setting!");
         return MRDA_STATUS_INVALID_DATA;
     }
+
+    // check decode params
+    if ((m_taskManager->TaskType() == TASKTYPE::taskDecode ||
+        m_taskManager->TaskType() == TASKTYPE::taskFFmpegDecode ||
+        m_taskManager->TaskType() == TASKTYPE::taskOneVPLDecode) &&
+    (params->decodeParams.codec_id == StreamCodecID::CodecID_NONE ||
+     params->decodeParams.color_format == ColorFormat::COLOR_FORMAT_NONE ||
+     params->decodeParams.frame_num == 0 ||
+     params->decodeParams.frame_width <= 0 || params->decodeParams.frame_height <= 0 ||
+     params->decodeParams.framerate_den <= 0 || params->decodeParams.framerate_num <= 0))
+     {
+        MRDA_LOG(LOG_ERROR, "invalid decode parameters setting!");
+        return MRDA_STATUS_INVALID_DATA;
+     }
 
     return MRDA_STATUS_SUCCESS;
 }
