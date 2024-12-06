@@ -134,8 +134,16 @@ Status SessionManagerImpl::StartService(ServerContext* context, const MRDA::Task
         return Status::CANCELLED;
     }
     CopyTaskInfo(in_mrdaInfo, out_mrdaInfo);
+    // get service address
+    std::pair<uint32_t, std::string> serviceAddr = GenerateServiceAddr();
+    if (serviceAddr.second.empty())
+    {
+        MRDA_LOG(LOG_ERROR, "Failed to generate service address.");
+        return Status::CANCELLED;
+    }
     // assign resource
     TaskInfo taskInfo;
+    taskInfo.taskID = serviceAddr.first;
     if (MRDA_STATUS_SUCCESS != AssignResource(&taskInfo))
     {
         MRDA_LOG(LOG_ERROR, "Failed to assign resource.");
@@ -157,13 +165,7 @@ Status SessionManagerImpl::StartService(ServerContext* context, const MRDA::Task
         MRDA_LOG(LOG_ERROR, "Failed to initialize host service.");
         return Status::CANCELLED;
     }
-    // get service address
-    std::pair<uint32_t, std::string> serviceAddr = GenerateServiceAddr();
-    if (serviceAddr.second.empty())
-    {
-        MRDA_LOG(LOG_ERROR, "Failed to generate service address.");
-        return Status::CANCELLED;
-    }
+
     // start service start thread
     std::thread hostServiceStartThread([=](){
         hostServiceSession->RunService(serviceAddr.second);

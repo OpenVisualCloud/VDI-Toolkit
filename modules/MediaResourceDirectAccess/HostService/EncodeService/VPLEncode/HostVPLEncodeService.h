@@ -54,7 +54,7 @@ public:
     //!
     //! \brief Construct a new Host VPL Encode Service object
     //!
-    HostVPLEncodeService();
+    HostVPLEncodeService(TaskInfo taskInfo);
     //!
     //! \brief Destroy the Host VPL Encode Service object
     //!
@@ -152,6 +152,7 @@ private: //MFX related
     mfxSession m_session; //<! MFX video session
     mfxVideoParam m_mfxVideoParams; //<! MFX encode parameters
     mfxBitstream m_bitstream; //<! MFX bitstream
+    TaskInfo     m_taskInfo; //<! Task information
 };
 
 VDI_NS_END

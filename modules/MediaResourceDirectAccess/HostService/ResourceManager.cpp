@@ -243,20 +243,17 @@ MRDAStatus GPUResourceFirstAllocatorStrategy::AllocateResource(TaskInfo *taskInf
         MRDA_LOG(LOG_ERROR, "Invalid gpu or cpu usage");
         return MRDA_STATUS_INVALID_DATA;
     }
-    // assign gpu resource first
-    for (auto gpuUsage : m_gpuUsage)
+    // assign gpu resource accoding to task id
+    uint32_t gpuCount = m_gpuUsage.size();
+    uint32_t gpuId = (taskInfo->taskID - 1) % gpuCount;
+    if (m_gpuUsage[gpuId].second < MAX_GPU_USAGE)
     {
-        if (gpuUsage.second < MAX_GPU_USAGE)
-        {
-            // assign gpu
-            taskInfo->taskDevice = {DeviceType::GPU, gpuUsage.first};
-            break;
-        }
+        taskInfo->taskDevice = {DeviceType::GPU, gpuId};
+        MRDA_LOG(LOG_INFO, "Assign gpu %d to task %d", gpuId, taskInfo->taskID);
     }
-
-    // if gpu resource full, then consider cpu resource
-    if (taskInfo->taskDevice.deviceType != DeviceType::GPU)
+    else
     {
+        // if gpu resource full, then consider cpu resource
         if (m_cpuUsage < MAX_CPU_USAGE)
         {
             taskInfo->taskDevice = {DeviceType::CPU, 0};

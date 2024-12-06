@@ -67,11 +67,13 @@ public:
     //!
     inline static std::shared_ptr<HostService> CreateHostService(const MRDA::TaskInfo *info)
     {
+        TaskInfo taskInfo = MakeTaskInfoBack(info);
+
         if (info->devicetype() == static_cast<int32_t>(DeviceType::GPU)
             && info->tasktype() == static_cast<int32_t>(TASKTYPE::taskFFmpegEncode))
         {
 #ifdef _FFMPEG_SUPPORT_
-            return std::make_shared<HostFFmpegEncodeService>();
+            return std::make_shared<HostFFmpegEncodeService>(taskInfo);
 #else
             MRDA_LOG(LOG_ERROR, "FFmpeg is not supported");
             return nullptr;
@@ -81,7 +83,7 @@ public:
             && info->tasktype() == static_cast<int32_t>(TASKTYPE::taskOneVPLEncode))
         {
 #ifdef _VPL_SUPPORT_
-            return std::make_shared<HostVPLEncodeService>();
+            return std::make_shared<HostVPLEncodeService>(taskInfo);
 #else
             MRDA_LOG(LOG_ERROR, "VPL is not supported");
             return nullptr;
@@ -91,7 +93,7 @@ public:
             && info->tasktype() == static_cast<int32_t>(TASKTYPE::taskFFmpegDecode))
         {
 #ifdef _FFMPEG_SUPPORT_
-            return std::make_shared<HostFFmpegDecodeService>();
+            return std::make_shared<HostFFmpegDecodeService>(taskInfo);
 #else
             MRDA_LOG(LOG_ERROR, "FFmpeg is not supported");
             return nullptr;
@@ -102,6 +104,21 @@ public:
             MRDA_LOG(LOG_ERROR, "Unsupported task type or device type");
             return nullptr;
         }
+    }
+private:
+    //!
+    //! \brief Transfer from mrda TaskInfo to TaskInfo
+    //!
+    inline static TaskInfo MakeTaskInfoBack(const MRDA::TaskInfo *mrda_taskInfo)
+    {
+        TaskInfo taskInfo;
+        taskInfo.taskType = static_cast<TASKTYPE>(mrda_taskInfo->tasktype());
+        taskInfo.taskStatus = static_cast<TASKStatus>(mrda_taskInfo->taskstatus());
+        taskInfo.taskID = mrda_taskInfo->taskid();
+        taskInfo.taskDevice.deviceID = mrda_taskInfo->deviceid();
+        taskInfo.taskDevice.deviceType = static_cast<DeviceType>(mrda_taskInfo->devicetype());
+        taskInfo.ipAddr = mrda_taskInfo->ipaddr();
+        return taskInfo;
     }
 
 };

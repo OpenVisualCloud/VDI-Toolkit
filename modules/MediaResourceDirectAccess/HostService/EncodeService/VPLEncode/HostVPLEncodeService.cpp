@@ -45,9 +45,10 @@
 
 VDI_NS_BEGIN
 
-HostVPLEncodeService::HostVPLEncodeService()
+HostVPLEncodeService::HostVPLEncodeService(TaskInfo taskInfo)
 {
     debug_file = fopen("out_host.hevc", "wb");
+    m_taskInfo = taskInfo;
 }
 
 HostVPLEncodeService::~HostVPLEncodeService()

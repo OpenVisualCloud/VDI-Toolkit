@@ -45,11 +45,12 @@
 
 VDI_NS_BEGIN
 
-HostFFmpegDecodeService::HostFFmpegDecodeService()
+HostFFmpegDecodeService::HostFFmpegDecodeService(TaskInfo taskInfo)
     :m_avctx(nullptr),
      m_hwDeviceCtx(nullptr)
 {
     debug_file = fopen("out_host.nv12", "wb");
+    m_taskInfo = taskInfo;
 }
 
 HostFFmpegDecodeService::~HostFFmpegDecodeService()
@@ -170,7 +171,11 @@ MRDAStatus HostFFmpegDecodeService::InitCodec()
         return MRDA_STATUS_OPERATION_FAIL;
     }
 
-    ret = av_hwdevice_ctx_create(&m_hwDeviceCtx, type, NULL, NULL, 0);
+    std::string device_str = "/dev/dri/renderD";
+    uint32_t device_id = 128 + m_taskInfo.taskDevice.deviceID; // deviceID starts from 0
+    device_str += std::to_string(device_id);
+
+    ret = av_hwdevice_ctx_create(&m_hwDeviceCtx, type, device_str.c_str(), NULL, 0);
     if (ret < 0) {
         MRDA_LOG(LOG_ERROR, "Failed to create HW device context");
         return MRDA_STATUS_OPERATION_FAIL;

@@ -47,7 +47,7 @@ public:
     //!
     //! \brief Construct a new Host FFmpeg Decode Service object
     //!
-    HostFFmpegDecodeService();
+    HostFFmpegDecodeService(TaskInfo taskInfo);
     //!
     //! \brief Destroy the Host FFmpeg Decode Service object
     //!
@@ -151,6 +151,7 @@ private:
 private: //AV related
     AVCodecContext       *m_avctx;     //!< AV codec context
     AVBufferRef    *m_hwDeviceCtx;     //!< hardware device context
+    TaskInfo           m_taskInfo;     //!< task info
 };
 
 VDI_NS_END

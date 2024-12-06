@@ -47,11 +47,12 @@
 
 VDI_NS_BEGIN
 
-HostFFmpegEncodeService::HostFFmpegEncodeService()
+HostFFmpegEncodeService::HostFFmpegEncodeService(TaskInfo taskInfo)
     :m_avctx(nullptr),
      m_hwDeviceCtx(nullptr)
 {
     debug_file = fopen("out_host.hevc", "wb");
+    m_taskInfo = taskInfo;
 }
 
 HostFFmpegEncodeService::~HostFFmpegEncodeService()
@@ -286,8 +287,12 @@ int HostFFmpegEncodeService::GetCodecProfile(CodecProfile codecProfile)
 
 MRDAStatus HostFFmpegEncodeService::InitCodec()
 {
+    std::string device_str = "/dev/dri/renderD";
+    uint32_t device_id = 128 + m_taskInfo.taskDevice.deviceID; // deviceID starts from 0
+    device_str += std::to_string(device_id);
+
     if (av_hwdevice_ctx_create(&m_hwDeviceCtx, AV_HWDEVICE_TYPE_VAAPI,
-                                 nullptr, nullptr, 0) < 0)
+                                 device_str.c_str(), nullptr, 0) < 0)
     {
         MRDA_LOG(LOG_ERROR, "Failed to create VAAPI hardware device.");
         return MRDA_STATUS_OPERATION_FAIL;
