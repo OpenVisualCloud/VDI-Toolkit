@@ -4,7 +4,14 @@ PREBUILD_FLAG=$1
 
 build_gitv2()
 {
-    sudo yum -y install curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-ExtUtils-MakeMaker
+    OS=$(awk -F= '/^NAME/{print $2}' /etc/os-release)
+    if [ "${OS}" == \""CentOS Linux"\" ];then
+        sudo yum -y install curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-ExtUtils-MakeMaker
+    elif [ "${OS}" == \""CentOS Stream"\" ];then
+        sudo dnf -y install curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-ExtUtils-MakeMaker
+    elif [ "${OS}" == \""Ubuntu"\" ];then
+        sudo apt install libcurl4-openssl-dev libexpat1-dev gettext libssl-dev zlib1g-dev libperl-dev make
+    fi
     if [ ! -d "./git-2.21.0" ];then
         wget https://github.com/git/git/archive/v2.21.0.tar.gz -O git-2.21.0.tar.gz
         tar xzvf git-2.21.0.tar.gz

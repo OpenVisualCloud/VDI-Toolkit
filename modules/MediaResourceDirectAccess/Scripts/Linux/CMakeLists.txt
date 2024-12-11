@@ -167,7 +167,7 @@ ENDIF(VPL_SUPPORT)
 
 IF(FFMPEG_SUPPORT)
   ADD_DEFINITIONS("-D_FFMPEG_SUPPORT_")
-  target_link_libraries(${TARGET} avcodec avutil swscale)
+  target_link_libraries(${TARGET} avcodec avutil swscale swresample va-drm va)
 ENDIF(FFMPEG_SUPPORT)
 
 include_directories(
