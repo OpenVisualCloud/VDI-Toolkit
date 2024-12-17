@@ -36,7 +36,7 @@ echo json include path is %jsonincludepath%
 
 echo.
 echo Fetching ffmpeg-6.1.1-full_build-shared ...
-set ffmpegurl=https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-6.1.1-full_build-shared.7z
+set ffmpegurl=https://github.com/GyanD/codexffmpeg/releases/download/6.1.1/ffmpeg-6.1.1-full_build-shared.zip
 set ffmpegpath=%depsPath%\ffmpeg-6.1.1-full_build-shared
 set ffmpegoutput=%depsPath%\ffmpeg-6.1.1-full_build-shared.7z
 powershell.exe -c "Invoke-WebRequest -Uri %ffmpegurl% -OutFile %ffmpegoutput%"

@@ -6,10 +6,10 @@ To enable rtsp streaming, ``mediamtx_v1.6.0_windows_amd64`` is downloaded to sta
 
 ## Usage:
 ### 1. IVSHMEM device and Host service
-Please refer to the [MediaResourceDirectAccess README.md](..\MediaResourceDirectAccess\README.md) for the setup of IVSHMEM device and Host service.
+Please refer to the [MediaResourceDirectAccess README.md](..\..\MediaResourceDirectAccess\README.md) for the setup of IVSHMEM device and Host service.
 
 ### 2. Windows Guest Sample App
-Besides the params of MRDASampleApp.exe in the [MediaResourceDirectAccess README.md](..\MediaResourceDirectAccess\README.md),
+Besides the params of MRDASampleApp.exe in the [MediaResourceDirectAccess README.md](..\..\MediaResourceDirectAccess\README.md),
 MDSCMRDASampleApp.exe added 3 params for inputType and outputType selection:
 
 [--inputType input_type]	- specifies the input type. option: capture, file.
@@ -30,22 +30,96 @@ And the IP port "8554" of the Windows virtual machine needs to be forwarded to t
 sudo iptables -t nat -I PREROUTING -p tcp --dport 38554 -j DNAT --to ${IP}:8554
 ```
 
+Edit ``MDSCMRDASample.conf`` for different usage.
+### 1. Config Params Explanation
+```bash
+# 1. MRDA params:
+## MRDA host session address $host_ip:host_port
+"MRDA-host-session-address": "127.0.0.1:50051",
+## MRDA total memory size
+"MRDA-memDevSize": 1000000000,
+## MRDA buffer number
+"MRDA-bufferNum": 100,
+## MRDA buffer size
+"MRDA-bufferSize": 10000000,
+## MRDA input memory dev path
+"MRDA-inDevPath": "/dev/shm/shm1",
+## MRDA output memory dev path
+"MRDA-outDevPath": "/dev/shm/shm2",
+## input memory dev slot number
+"MRDA-inDevSlotNumber": 11,
+## output memory dev slot number
+"MRDA-outDevSlotNumber": 12,
+
+# 2. IO params:
+## input type, capture or file, currently only support capture
+"inputType": "capture",
+## output type, stream or file
+"outputType": "stream",
+## input filename, currently no use
+"inputFile": "input.rgba",
+## output filename
+"outputFile": "output.hevc",
+## rtsp server ip
+"rtsp-server-ip": "127.0.0.1",
+## rtsp server port
+"rtsp-server-port": "8554",
+## input frame width, capture mode will be modified with captured frame info
+"inputWidth": 1920,
+## input frame height, capture mode will be modified with captured frame info
+"inputHeight": 1080,
+## total frame number to capture and encode
+"frameNum": 300,
+
+
+# 3. capture params:
+## capture display with fix fps
+"capture-fps": 30,
+## capture single display("true") or multiple displays("false")
+"capture-single-display": false,
+## when capture-single-display is "true", select which display to capture, and if the number is larger than the total number of multi-displays, the default display with number 0 will be captured
+"capture-single-display-number": 0,
+## the path to save "*.rgba" files when "DUMP_RGBA" is defined when building the sample
+"capture-dump-path": "capture_dump"
+
+# 2. encode params:
+## encode type, "ffmpeg-software", "ffmpeg-MRDA" or "vpl-MRDA"
+"encode-type": "ffmpeg-software",
+## input color format, capture mode default "rgb32"
+"inputColorFormat": "rgb32",
+## output pixel format, "nv12" or "yuv420p"
+"outputPixelFormat": "yuv420p",
+## codec id, "avc", "hevc", "h264", or "h265"
+"encode-codecId": "hevc",
+## codec profile, "avc:main", "avc:high", "hevc:main", or "hevc:main10"
+"encode-codecProfile": "hevc:main",
+## asynchronous operations number
+"encode-async-depth": 4,
+## the preset for quality and performance balance, "balanced", "quality", or "speed"
+"encode-target-usage": "balanced",
+## rate control mode, "CQP" or "VBR"
+"encode-rcMode": "VBR",
+## quantization value under CQP mode
+"encode-qp": 26,
+## bitrate value under VBR mode
+"encode-bitrate": 15000,
+## frame rate numerator
+"encode-fps": 30,
+## the distance between two adjacent intra frame
+"encode-gop": 30,
+## maximum number of B-frames between non-B-frames
+"encode-max-bFrames": 0
+```
+
 Then start the MDSCMRDASample:
 ```bash
 cd scripts\build\Release
-# 1. Run MDSCMRDASampleApp.exe with capture input and stream output:
-.\MDSCMRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051  --inputType capture --outputType stream --rtsp rtsp://127.0.0.1:8554/screencap --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --inDevSlotNumber 11 --outDevSlotNumber 12 --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1  --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --maxBFrames 0 --encodeType oneVPL
-# 2. Run MDSCMRDASampleApp.exe with capture input and file output:
-.\MDSCMRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051 --inputType capture --outputType file -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --inDevSlotNumber 11 --outDevSlotNumber 12 --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1  --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --maxBFrames 0 --encodeType oneVPL
-# 3. Run MDSCMRDASampleApp.exe with file input and file output:
-.\MDSCMRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051 --inputType file --outputType file -i input.rgba -o output.hevc --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --inDevSlotNumber 11 --outDevSlotNumber 12 --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1  --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --maxBFrames 0 --encodeType oneVPL
-# 4. Run MDSCMRDASampleApp.exe with file input and stream output:
-.\MDSCMRDASampleApp.exe --hostSessionAddr 127.0.0.1:50051 --inputType file --outputType stream -i input.rgba --rtsp rtsp://127.0.0.1:8554/screencap --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --inDevSlotNumber 11 --outDevSlotNumber 12 --frameNum 3000 --codecId h265 --gopSize 30 --asyncDepth 4 --targetUsage balanced --rcMode 1  --bitrate 15000 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --codecProfile hevc:main --maxBFrames 0 --encodeType oneVPL
+.\MDSCMRDASampleApp.exe
 ```
 
 To read from the published rtsp stream, you can use ffplay in your client machine:
 ```bash
-ffplay -x 1920 -y 1080 -rtsp_transport tcp rtsp://${Host_IP}:38554/capture
+ffplay -x 1920 -y 1080 -rtsp_transport tcp rtsp://${Host_IP}:38554/capture0
 ```
 
 ## Compile:

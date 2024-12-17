@@ -15,10 +15,18 @@ OPTION(ENABLE_TRACE
   OFF
 )
 
+OPTION(DUMP_RGBA
+  "Dump captured rgba results"
+  OFF
+)
+
 IF(ENABLE_TRACE)
   ADD_DEFINITIONS("-D_ENABLE_TRACE_")
 ENDIF()
 
+IF(DUMP_RGBA)
+  ADD_DEFINITIONS("-DDUMP_RGBA")
+ENDIF()
 
 # Project
 project(MDSCMRDASampleApp)
@@ -32,9 +40,9 @@ set(DIR_SRC
   )
 
 link_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../MediaResourceDirectAccess/Scripts/Windows/lib/install/lib/
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../multidispscreencap/bin
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../multidispscreencap/MDSCSample/deps/ffmpeg-6.1.1-full_build-shared/lib
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../MediaResourceDirectAccess/Scripts/Windows/lib/install/lib/
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../multidispscreencap/bin
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../multidispscreencap/MDSCSample/deps/ffmpeg-6.1.1-full_build-shared/lib
   )
 
 # Targets
@@ -45,8 +53,9 @@ add_executable(${TARGET}
 target_link_libraries(${TARGET} libWinGuest MultiDisplayScreenCapture avcodec avdevice avfilter avformat avutil postproc swresample swscale)
 
 include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/../../MediaResourceDirectAccess/Scripts/Windows/lib/install/include
-${CMAKE_CURRENT_SOURCE_DIR}/../../MediaResourceDirectAccess/utils
-${CMAKE_CURRENT_SOURCE_DIR}/../../multidispscreencap/MultiDisplayScreenCapture
-${CMAKE_CURRENT_SOURCE_DIR}/../../multidispscreencap/MDSCSample/deps/ffmpeg-6.1.1-full_build-shared/include
+${CMAKE_CURRENT_SOURCE_DIR}/../../../MediaResourceDirectAccess/Scripts/Windows/lib/install/include
+${CMAKE_CURRENT_SOURCE_DIR}/../../../MediaResourceDirectAccess/utils
+${CMAKE_CURRENT_SOURCE_DIR}/../../../multidispscreencap/MultiDisplayScreenCapture
+${CMAKE_CURRENT_SOURCE_DIR}/../../../multidispscreencap/MDSCSample/deps/nlohmann
+${CMAKE_CURRENT_SOURCE_DIR}/../../../multidispscreencap/MDSCSample/deps/ffmpeg-6.1.1-full_build-shared/include
 )
