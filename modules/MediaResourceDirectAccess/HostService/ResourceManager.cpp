@@ -133,9 +133,11 @@ MRDAStatus ResourceAllocatorStrategy::CheckGPU()
     else if (accDriver == ACCResourceDriver::QAT420XXDRIVER)
     {
         // TODO: add qat420xx information collection
-        for (int32_t i = 0; i < gpuCount; i++)
-        {
-            m_gpuUsage.push_back(std::make_pair(i, 0.0));
+        if (m_gpuUsage.empty()) {
+            for (int32_t i = 0; i < gpuCount; i++)
+            {
+                m_gpuUsage.push_back(std::make_pair(i, 0.0));
+            }
         }
     }
     return MRDA_STATUS_SUCCESS;
