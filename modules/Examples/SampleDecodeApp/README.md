@@ -43,3 +43,17 @@ sudo ./HostService -addr 127.0.0.1:50051
 cd Examples/SampleDecodeApp/scripts/build/Release
 ./MRDASampleDecodeApp.exe --hostSessionAddr 127.0.0.1:50051 -i input.h265 -o output.raw --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --inDevSlotNumber 11 --outDevSlotNumber 12 --frameNum 3000 --codecId h265 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --decodeType ffmpeg
 ```
+
+# SampleDecodeAppSW
+
+SampleDecodeAppSW is a sample application that demonstrates how to use ffmpeg software decoder to decode a video stream in guest VMs.
+
+- Build and run ffmpeg software decoder app
+```
+cd Examples/SampleDecodeApp/scripts
+./WinBuild.bat
+```
+```
+cd Examples/SampleDecodeApp/scripts/build/Release
+./MRDASampleDecodeAppSW.exe -i input.h265 -o output.yuv420p --frameNum 3000 --codecId h265 --fps 30 --width 1920 --height 1080 --colorFormat yuv420p --decodeType ffmpeg
+```
