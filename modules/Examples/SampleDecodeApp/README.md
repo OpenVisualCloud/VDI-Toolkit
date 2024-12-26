@@ -19,7 +19,7 @@ cd MediaResourceDirectAccess/Scripts/Windows/lib
 ./WinBuild.bat
 ```
 - Install windows ffmpeg library
-Refer to [How to install windows ffmpeg library](Scripts/Windows/SampleDecode/prebuild.md)
+Refer to [How to install windows ffmpeg library](scripts/prebuild.md)
 - Build MRDA windows guest app
 ```
 cd Examples/SampleDecodeApp/scripts
