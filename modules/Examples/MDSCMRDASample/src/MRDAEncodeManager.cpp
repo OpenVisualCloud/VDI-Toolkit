@@ -91,9 +91,9 @@ MRDAStatus MRDAEncodeManager::Init(const MRDAEncode_Params &MRDAEncodeParams)
 
 MRDAStatus MRDAEncodeManager::Encode(uint8_t* data, uint64_t timestamp)
 {
- //#ifdef _ENABLE_TRACE_
+#ifdef _ENABLE_TRACE_
     std::chrono::time_point<std::chrono::high_resolution_clock> st_enc_tp = std::chrono::high_resolution_clock::now();
-//#endif
+#endif
 	if (nullptr == data)
 	{
 		MRDA_LOG(LOG_ERROR, "[thread][%d], data is nullptr", m_uThreadId);
@@ -106,7 +106,7 @@ MRDAStatus MRDAEncodeManager::Encode(uint8_t* data, uint64_t timestamp)
     {
         MRDA_LOG(LOG_WARNING, "[thread][%d], get buffer for input failed!", m_uThreadId);
         Sleep(10); // 10ms
-        return MRDA_STATUS_INVALID_DATA;
+        return MRDA_STATUS_NOT_READY;
     }
     if (inBuffer == nullptr)
     {
@@ -146,11 +146,11 @@ MRDAStatus MRDAEncodeManager::Encode(uint8_t* data, uint64_t timestamp)
 
     std::lock_guard<std::mutex> lock(m_mutex);
     m_nSendFrameCount++;
-//#ifdef _ENABLE_TRACE_
+#ifdef _ENABLE_TRACE_
     std::chrono::time_point<std::chrono::high_resolution_clock> ed_enc_tp = std::chrono::high_resolution_clock::now();
     uint64_t enc_duration = std::chrono::duration_cast<std::chrono::microseconds>(ed_enc_tp - st_enc_tp).count();
     MRDA_LOG(LOG_INFO, "[thread][%d], MediaResourceDirectAccess send frame successed, framecount %d, timecost %lldms", m_uThreadId, m_nSendFrameCount, enc_duration/1000);
-//#endif
+#endif
 	return MRDA_STATUS_SUCCESS;
 }
 

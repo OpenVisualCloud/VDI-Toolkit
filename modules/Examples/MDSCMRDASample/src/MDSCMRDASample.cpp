@@ -395,7 +395,19 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
                 fwrite(data, mapped.DepthPitch, 1, fp);
 #endif
                 if (data != NULL)
-                    video_encode->Encode(data, CurrentData.AcquiredTime);
+                {
+                    int ret = video_encode->Encode(data, CurrentData.AcquiredTime);
+                    while (MRDA_STATUS_NOT_READY == ret)
+                    {
+                        ret = video_encode->Encode(data, CurrentData.AcquiredTime);
+                    }
+                    if (ret != 0)
+                    {
+                        CurrentData.CapturedTexture->Release();
+                        CurrentData.CapturedTexture = nullptr;
+                        break;
+                    }
+                }
             }
             else
             {
@@ -511,6 +523,7 @@ int main()
             printf("Failed to create encoding thread %d\n", i);
             return SCREENCAP_FAILED;
         }
+        SetThreadPriority(ThreadHandles[i], THREAD_PRIORITY_HIGHEST);
     }
 
     // check end

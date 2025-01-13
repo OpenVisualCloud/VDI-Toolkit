@@ -259,6 +259,11 @@ int EncodeManager::Open_encode_context(const Encode_Params& encode_params)
         ret = av_opt_set(m_pCodecCtx->priv_data, "preset", "veryfast", 0);
     }
 
+    if (encodec->id == AV_CODEC_ID_H264)
+    {
+        av_opt_set(m_pCodecCtx->priv_data, "tune", "zerolatency", 0);
+    }
+
     if (ret < 0)
     {
         char errStr[256] = { 0 };
