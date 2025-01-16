@@ -46,7 +46,8 @@ enum Encode_Type
 {
     FFmpeg_SW = 0,
     FFmpeg_MRDA = 1,
-    VPL_MRDA = 2
+    VPL_MRDA = 2,
+    QES = 3,
 };
 
 enum Encode_CodecId

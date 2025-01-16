@@ -43,6 +43,7 @@ link_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../MediaResourceDirectAccess/Scripts/Windows/lib/install/lib/
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../multidispscreencap/bin
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../multidispscreencap/MDSCSample/deps/ffmpeg-6.1.1-full_build-shared/lib
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../dgpu/mediasample/MediaSample/deps/lib
   )
 
 # Targets
@@ -50,7 +51,7 @@ add_executable(${TARGET}
   ${DIR_SRC}
   )
 
-target_link_libraries(${TARGET} libWinGuest MultiDisplayScreenCapture avcodec avdevice avfilter avformat avutil postproc swresample swscale)
+target_link_libraries(${TARGET} QESLib libWinGuest MultiDisplayScreenCapture avcodec avdevice avfilter avformat avutil postproc swresample swscale)
 
 include_directories(
 ${CMAKE_CURRENT_SOURCE_DIR}/../../../MediaResourceDirectAccess/Scripts/Windows/lib/install/include
@@ -58,4 +59,5 @@ ${CMAKE_CURRENT_SOURCE_DIR}/../../../MediaResourceDirectAccess/utils
 ${CMAKE_CURRENT_SOURCE_DIR}/../../../multidispscreencap/MultiDisplayScreenCapture
 ${CMAKE_CURRENT_SOURCE_DIR}/../../../multidispscreencap/MDSCSample/deps/nlohmann
 ${CMAKE_CURRENT_SOURCE_DIR}/../../../multidispscreencap/MDSCSample/deps/ffmpeg-6.1.1-full_build-shared/include
+${CMAKE_CURRENT_SOURCE_DIR}/../../../../dgpu/mediasample/MediaSample/deps/include
 )

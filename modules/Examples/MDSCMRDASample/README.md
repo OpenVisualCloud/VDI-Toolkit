@@ -30,6 +30,8 @@ And the IP port "8554" of the Windows virtual machine needs to be forwarded to t
 sudo iptables -t nat -I PREROUTING -p tcp --dport 38554 -j DNAT --to ${IP}:8554
 ```
 
+This sample also has ffmpeg-software and QES encode mode, to use QES encode, IVSHMEM needs to be removed and VGPU needs to be added.
+
 Edit ``MDSCMRDASample.conf`` for different usage.
 ### 1. Config Params Explanation
 ```bash
@@ -83,7 +85,7 @@ Edit ``MDSCMRDASample.conf`` for different usage.
 "capture-dump-path": "capture_dump"
 
 # 2. encode params:
-## encode type, "ffmpeg-software", "ffmpeg-MRDA" or "vpl-MRDA"
+## encode type, "ffmpeg-software", "ffmpeg-MRDA", "vpl-MRDA" or "QES"
 "encode-type": "ffmpeg-software",
 ## input color format, capture mode default "rgb32"
 "inputColorFormat": "rgb32",

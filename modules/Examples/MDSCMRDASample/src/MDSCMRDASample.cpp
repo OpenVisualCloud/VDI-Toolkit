@@ -31,6 +31,7 @@
 
 #include "MultiDisplayScreenCapture.h"
 #include "MRDAEncodeManager.h"
+#include "QESEncodeManager.h"
 #include "JsonConfig.h"
 #include "common.h"
 
@@ -96,7 +97,7 @@ typedef struct INPUTCONFIG
     std::string  output_pixel_format;           //!< output pixel color format
     std::string codec_profile;                  //!< the profile to create bitstream
     uint32_t max_b_frames;                      //!< maximum number of B-frames between non-B-frames
-	Encode_Type encode_type;                    //!< encode type, ffmpeg-software, ffmpeg-MRDA, vpl-MRDA
+    Encode_Type encode_type;                    //!< encode type, ffmpeg-software, ffmpeg-MRDA, vpl-MRDA, QES
 } InputConfig;
 
 typedef struct ENCODE_THREAD_INPUT_PARAMS
@@ -160,6 +161,10 @@ Encode_Type StringToEncodeType(const char *encode_type_str)
     else if (0 == strcmp(encode_type_str, "vpl-MRDA"))
     {
         encode_type = VPL_MRDA;
+    }
+    else if (0 == strcmp(encode_type_str, "QES"))
+    {
+        encode_type = QES;
     }
     return encode_type;
 }
@@ -335,6 +340,16 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
 			return -1;
 		}
     }
+    else if(QES == TData->inputConfig->encode_type)
+    {
+        video_encode = new QESEncodeManager();
+        QESEncodeManager* qes_video_encode = dynamic_cast<QESEncodeManager*>(video_encode);
+        if (qes_video_encode->Init(EncParams, TData->DxRes))
+        {
+            printf("[Thread][%d], Failed to init QES video encoder\n", TData->ThreadId);
+            return -1;
+        }
+    }
 
     uint32_t n = 0;
     CapturedData CurrentData = CapturedData{};
@@ -379,45 +394,58 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
 
         if (CurrentData.CapturedTexture)
         {
-            HRESULT hr = TData->DxRes->Context->Map(CurrentData.CapturedTexture, 0, D3D11_MAP_READ, 0, &mapped);
-            if (FAILED(hr))
+            if (QES == TData->inputConfig->encode_type)
             {
-                printf("[Thread][%d], frame %d, failed to map texture\n", TData->ThreadId, n);
-                CurrentData.CapturedTexture->Release();
-                CurrentData.CapturedTexture = nullptr;
-                continue;
-            }
-
-            if (mapped.pData)
-            {
-                uint8_t* data = static_cast<uint8_t*>(mapped.pData);
-#ifdef DUMP_RGBA
-                fwrite(data, mapped.DepthPitch, 1, fp);
-#endif
-                if (data != NULL)
+                QESEncodeManager* qes_video_encode = dynamic_cast<QESEncodeManager*>(video_encode);
+                qesStatus sts = qes_video_encode->Encode(CurrentData.CapturedTexture, CurrentData.AcquiredTime);
+                if (QES_ERR_NONE != sts)
                 {
-                    int ret = video_encode->Encode(data, CurrentData.AcquiredTime);
-                    while (MRDA_STATUS_NOT_READY == ret)
-                    {
-                        ret = video_encode->Encode(data, CurrentData.AcquiredTime);
-                    }
-                    if (ret != 0)
-                    {
-                        CurrentData.CapturedTexture->Release();
-                        CurrentData.CapturedTexture = nullptr;
-                        break;
-                    }
+                    printf("[Thread][%d], frame %d, failed to encode QES frame\n", TData->ThreadId, n);
+                    break;
                 }
             }
             else
             {
-                printf("[Thread][%d], frame %d, No valid mapped Texture Data\n", TData->ThreadId, n);
-                CurrentData.CapturedTexture->Release();
-                CurrentData.CapturedTexture = nullptr;
-                continue;
-            }
+                HRESULT hr = TData->DxRes->Context->Map(CurrentData.CapturedTexture, 0, D3D11_MAP_READ, 0, &mapped);
+                if (FAILED(hr))
+                {
+                    printf("[Thread][%d], frame %d, failed to map texture\n", TData->ThreadId, n);
+                    CurrentData.CapturedTexture->Release();
+                    CurrentData.CapturedTexture = nullptr;
+                    continue;
+                }
 
-            TData->DxRes->Context->Unmap(CurrentData.CapturedTexture, 0);
+                if (mapped.pData)
+                {
+                    uint8_t* data = static_cast<uint8_t*>(mapped.pData);
+    #ifdef DUMP_RGBA
+                    fwrite(data, mapped.DepthPitch, 1, fp);
+    #endif
+                    if (data != NULL)
+                    {
+                        int ret = video_encode->Encode(data, CurrentData.AcquiredTime);
+                        while (MRDA_STATUS_NOT_READY == ret)
+                        {
+                            ret = video_encode->Encode(data, CurrentData.AcquiredTime);
+                        }
+                        if (ret != 0)
+                        {
+                            CurrentData.CapturedTexture->Release();
+                            CurrentData.CapturedTexture = nullptr;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    printf("[Thread][%d], frame %d, No valid mapped Texture Data\n", TData->ThreadId, n);
+                    CurrentData.CapturedTexture->Release();
+                    CurrentData.CapturedTexture = nullptr;
+                    continue;
+                }
+
+                TData->DxRes->Context->Unmap(CurrentData.CapturedTexture, 0);
+            }
         }
 
         std::chrono::time_point<std::chrono::high_resolution_clock> endtp = std::chrono::high_resolution_clock::now();
