@@ -343,10 +343,10 @@ MRDAStatus MRDAEncodeManager::CreateMediaParams(const MRDAEncode_Params &MRDAEnc
     m_pMediaParams->shareMemoryInfo.totalMemorySize = MRDAEncodeParams.totalMemorySize;
     m_pMediaParams->shareMemoryInfo.bufferNum = MRDAEncodeParams.bufferNum;
     m_pMediaParams->shareMemoryInfo.bufferSize = MRDAEncodeParams.bufferSize;
-    m_pMediaParams->shareMemoryInfo.in_mem_dev_path = MRDAEncodeParams.in_mem_dev_path;
-    m_pMediaParams->shareMemoryInfo.out_mem_dev_path = MRDAEncodeParams.out_mem_dev_path;
-    m_pMediaParams->shareMemoryInfo.in_mem_dev_slot_number = MRDAEncodeParams.in_mem_dev_slot_number;
-    m_pMediaParams->shareMemoryInfo.out_mem_dev_slot_number = MRDAEncodeParams.out_mem_dev_slot_number;
+    m_pMediaParams->shareMemoryInfo.in_mem_dev_path = MRDAEncodeParams.in_mem_dev_path + std::to_string(m_uThreadId);;
+    m_pMediaParams->shareMemoryInfo.out_mem_dev_path = MRDAEncodeParams.out_mem_dev_path + std::to_string(m_uThreadId);;
+    m_pMediaParams->shareMemoryInfo.in_mem_dev_slot_number = MRDAEncodeParams.in_mem_dev_slot_number + m_uThreadId*2;
+    m_pMediaParams->shareMemoryInfo.out_mem_dev_slot_number = MRDAEncodeParams.out_mem_dev_slot_number + m_uThreadId*2;
 
     m_pMediaParams->encodeParams.codec_id = StringToCodecID(MRDAEncodeParams.encode_params.codec_id.c_str());
     m_pMediaParams->encodeParams.gop_size = MRDAEncodeParams.encode_params.gop;

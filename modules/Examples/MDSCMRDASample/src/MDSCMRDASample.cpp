@@ -498,17 +498,17 @@ int main()
     MultiDisplayScreenCapture MDSCsample;
     MDSCsample.Init();
     UINT DispNum = MDSCsample.GetDisplayCount();
-    printf("Display Num is %d", DispNum);
+    printf("Display Num is %d\n", DispNum);
 
     if (inputConfig.capture_single_display)
     {
         if (inputConfig.capture_single_display_number < DispNum)
         {
-            printf("Capture single display Id %d as config selected", inputConfig.capture_single_display_number);
+            printf("Capture single display Id %d as config selected\n", inputConfig.capture_single_display_number);
         }
         else
         {
-            printf("Invalid single display Id %d in config, capture single disp 0 as default", inputConfig.capture_single_display_number);
+            printf("Invalid single display Id %d in config, capture single disp 0 as default\n", inputConfig.capture_single_display_number);
             inputConfig.capture_single_display_number = 0;
         }
         MDSCsample.SetSingleDisplay(inputConfig.capture_single_display_number);

@@ -32,6 +32,16 @@ sudo iptables -t nat -I PREROUTING -p tcp --dport 38554 -j DNAT --to ${IP}:8554
 
 This sample also has ffmpeg-software and QES encode mode, to use QES encode, IVSHMEM needs to be removed and VGPU needs to be added.
 
+To use multiple display, Win2k19 with multi-VDD or WIN10 with multi-IDD is needed to setup, and multiple IVSHMEM devices need to be installed for MRDA encode type.
+```bash
+#Display 1:
+"MRDA-inDevPath": "/dev/shm/shm1IN0", "MRDA-inDevSlotNumber": 11,
+"MRDA-inDevPath": "/dev/shm/shm1OUT0","MRDA-inDevPath": 12,
+#Display 2:
+"MRDA-inDevPath": "/dev/shm/shm1IN1", "MRDA-inDevSlotNumber": 13,
+"MRDA-inDevPath": "/dev/shm/shm1OUT1","MRDA-inDevPath": 14,
+```
+
 Edit ``MDSCMRDASample.conf`` for different usage.
 ### 1. Config Params Explanation
 ```bash
@@ -122,6 +132,16 @@ cd scripts\build\Release
 To read from the published rtsp stream, you can use ffplay in your client machine:
 ```bash
 ffplay -x 1920 -y 1080 -rtsp_transport tcp rtsp://${Host_IP}:38554/screencap0
+```
+For multiple displays in 1 VM:
+```bash
+ffplay -x 1920 -y 1080 -rtsp_transport tcp rtsp://${Host_IP}:38554/screencap0
+ffplay -x 1920 -y 1080 -rtsp_transport tcp rtsp://${Host_IP}:38554/screencap1
+```
+For multiple VMs:
+```bash
+ffplay -x 1920 -y 1080 -rtsp_transport tcp rtsp://${Host_IP}:38554/screencap0
+ffplay -x 1920 -y 1080 -rtsp_transport tcp rtsp://${Host_IP}:38555/screencap0
 ```
 
 ## Compile:
