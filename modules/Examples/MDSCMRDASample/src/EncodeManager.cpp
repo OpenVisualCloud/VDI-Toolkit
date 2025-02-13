@@ -31,6 +31,7 @@
 
 EncodeManager::EncodeManager() : m_uThreadId(0),
                                  m_ulPts(0),
+                                 m_uFrameNum(0),
                                  m_bIsRtsp(false),
                                  m_sRtspUrl(""),
                                  m_sOutputFilename(""),
@@ -155,10 +156,15 @@ void EncodeManager::DestroyAVContext()
 
 int EncodeManager::Encode(uint8_t* data, uint64_t timestamp)
 {
-    std::chrono::time_point<std::chrono::high_resolution_clock> starttp = std::chrono::high_resolution_clock::now();
+#ifdef _ENABLE_TRACE_
+    std::chrono::time_point<std::chrono::high_resolution_clock> cv_starttp = std::chrono::high_resolution_clock::now();
+#endif
     BGRA2YUV(data, m_pCodecCtx->width, m_pCodecCtx->height);
-    std::chrono::time_point<std::chrono::high_resolution_clock> endtp = std::chrono::high_resolution_clock::now();
-    uint64_t timecost = std::chrono::duration_cast<std::chrono::microseconds>(endtp - starttp).count();
+#ifdef _ENABLE_TRACE_
+    std::chrono::time_point<std::chrono::high_resolution_clock> cv_endtp = std::chrono::high_resolution_clock::now();
+    uint64_t timecost = std::chrono::duration_cast<std::chrono::microseconds>(cv_endtp - cv_starttp).count();
+    printf("[thread][%d], frame %d, BGRA2YUV time cost %fms\n", m_uThreadId, m_uFrameNum, timecost/1000.0);
+#endif
 
     int ret = avcodec_send_frame(m_pCodecCtx, m_pFrame);
     if (ret < 0)
@@ -171,10 +177,14 @@ int EncodeManager::Encode(uint8_t* data, uint64_t timestamp)
     {
         ret = avcodec_receive_packet(m_pCodecCtx, m_pPkt);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+        {
+            m_uFrameNum++;
             return 0;
+        }
         else if (ret < 0)
         {
-            printf("[thread][%d], Error during encoding\n", m_uThreadId);
+            printf("[thread][%d], frame %d, Error during encoding\n", m_uThreadId, m_uFrameNum);
+            m_uFrameNum++;
             return -1;
         }
 
@@ -182,6 +192,12 @@ int EncodeManager::Encode(uint8_t* data, uint64_t timestamp)
         {
             m_pPkt->pts = timestamp - m_ulPts;
             m_pPkt->dts = m_pPkt->pts;
+
+            std::chrono::time_point<std::chrono::high_resolution_clock> enc_endtp = std::chrono::high_resolution_clock::now();
+#ifdef _ENABLE_TRACE_
+            uint64_t enc_timecost = std::chrono::duration_cast<std::chrono::microseconds>(enc_endtp - cv_endtp).count();
+            printf("[thread][%d], frame %d, rtsp mode Encode time cost %fms\n", m_uThreadId, m_uFrameNum, enc_timecost/1000.0);
+#endif
         }
         else
         {
@@ -190,9 +206,18 @@ int EncodeManager::Encode(uint8_t* data, uint64_t timestamp)
             m_pPkt->duration = av_rescale_q(m_pPkt->duration, m_pCodecCtx->time_base, m_pVideoStream->time_base);
             m_ulPts++;
         }
+#ifdef _ENABLE_TRACE_
+        std::chrono::time_point<std::chrono::high_resolution_clock> wt_starttp = std::chrono::high_resolution_clock::now();
+#endif
         av_interleaved_write_frame(m_pVideoOfmtCtx, m_pPkt);
         av_packet_unref(m_pPkt);
+#ifdef _ENABLE_TRACE_
+        std::chrono::time_point<std::chrono::high_resolution_clock> wt_endtp = std::chrono::high_resolution_clock::now();
+        uint64_t wt_timecost = std::chrono::duration_cast<std::chrono::microseconds>(wt_endtp - wt_starttp).count();
+        printf("[thread][%d], frame %d, write frame time cost %fms\n", m_uThreadId, m_uFrameNum, wt_timecost/1000.0);
+#endif
     }
+    m_uFrameNum++;
     return 0;
 }
 
@@ -286,8 +311,9 @@ int EncodeManager::Open_encode_context(const Encode_Params& encode_params)
 int EncodeManager::Init_swrContext(AVPixelFormat srcFormat, AVPixelFormat dstFormat)
 {
     m_pSwsCtx = sws_getContext(m_pCodecCtx->width, m_pCodecCtx->height, srcFormat, m_pCodecCtx->width, m_pCodecCtx->height, dstFormat, SWS_BILINEAR, NULL, NULL, NULL);
-    if (!m_pSwsCtx) {
-       printf("[thread][%d], Failed to get sws context", m_uThreadId);
+    if (!m_pSwsCtx)
+    {
+        printf("[thread][%d], Failed to get sws context", m_uThreadId);
     }
     return 0;
 }

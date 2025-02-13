@@ -42,13 +42,17 @@ public:
     MDSCLIB_API CapturedData DequeueBuffer();
     MDSCLIB_API CapturedData AcquireBuffer();
     MDSCLIB_API int GetSize() { return m_nSize; }
-    MDSCLIB_API int GetMaxSize() { return m_mMaxSize; }
+    MDSCLIB_API int GetMaxSize() { return m_nMaxSize; }
     MDSCLIB_API bool SetMaxSize(int psize);
     MDSCLIB_API bool CleanBuffer();
+    MDSCLIB_API int GetEnqueueSize();
+    MDSCLIB_API int GetDropSize();
 
 private:
     int m_nSize;
-    int m_mMaxSize;
+    int m_nMaxSize;
+    int m_nEnqueueSize;
+    int m_nDropSize;
     std::queue<CapturedData> m_qSourceQueue;
     std::mutex m_mQueueMutex;
 };

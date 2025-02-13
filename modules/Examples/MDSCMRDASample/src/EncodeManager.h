@@ -137,6 +137,7 @@ protected:
     uint64_t m_ulPts;
     bool m_bIsRtsp;
     uint32_t m_uThreadId;
+    uint64_t m_uFrameNum;
 };
 
 #endif

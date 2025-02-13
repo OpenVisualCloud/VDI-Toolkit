@@ -34,7 +34,9 @@
 BufferQueue::BufferQueue()
 {
     m_nSize = 0;
-    m_mMaxSize = 6;
+    m_nMaxSize = 6;
+    m_nEnqueueSize = 0;
+    m_nDropSize = 0;
     std::unique_lock<std::mutex> lock(m_mQueueMutex);
 }
 
@@ -54,7 +56,8 @@ bool BufferQueue::EnqueueBuffer(CapturedData Data)
     std::unique_lock<std::mutex> lock(m_mQueueMutex);
     m_qSourceQueue.push(Data);
     m_nSize += 1;
-    if (m_nSize > m_mMaxSize) {
+    m_nEnqueueSize += 1;
+    if (m_nSize > m_nMaxSize) {
         CapturedData data = m_qSourceQueue.front();
         if (data.CapturedTexture)
         {
@@ -63,6 +66,7 @@ bool BufferQueue::EnqueueBuffer(CapturedData Data)
         }
         m_qSourceQueue.pop();
         m_nSize -= 1;
+        m_nDropSize += 1;
     }
     return true;
 }
@@ -72,7 +76,7 @@ bool BufferQueue::EnqueueBuffer(CapturedData Data)
 //
 bool BufferQueue::SetMaxSize(int psize)
 {
-    m_mMaxSize = psize;
+    m_nMaxSize = psize;
     return true;
 }
 
@@ -127,4 +131,20 @@ bool BufferQueue::CleanBuffer()
         }
     }
     return res;
+}
+
+//
+// Get Enqueue Size
+//
+int BufferQueue::GetEnqueueSize()
+{
+    return m_nEnqueueSize;
+}
+
+//
+// Get Drop Size
+//
+int BufferQueue::GetDropSize()
+{
+    return m_nDropSize;
 }

@@ -71,7 +71,12 @@ void ScreenManager::Clean()
         m_pScreenHandles = nullptr;
     }
 
-    if (m_pBufferQueues) {
+    if (m_pBufferQueues)
+    {
+        for (UINT i = 0; i < m_uScreenCount; ++i)
+        {
+            printf("[Thread][%d], BufferQueue totally enqueued %d frames, dropped %d frames\n", i, m_pBufferQueues[i].GetEnqueueSize(), m_pBufferQueues[i].GetDropSize());
+        }
         delete[] m_pBufferQueues;
         m_pBufferQueues = nullptr;
     }

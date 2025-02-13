@@ -268,6 +268,32 @@ BOOL CreateMRDAEncodeParams(InputConfig *inputConfig, MRDAEncode_Params *MRDAEnc
     return TRUE;
 }
 
+
+void ControlFPS(uint64_t timecost, uint64_t& Timeout, uint64_t EncodeInterval, int FrameNum, int ThreadId)
+{
+    if (timecost < EncodeInterval)
+    {
+        uint64_t sleep_time = EncodeInterval - timecost;
+        if (sleep_time <= Timeout)
+        {
+            Timeout -= sleep_time;
+        }
+        else
+        {
+            sleep_time -= Timeout;
+            Timeout = 0;
+            std::this_thread::sleep_for(std::chrono::microseconds(sleep_time));
+        }
+#ifdef _ENABLE_TRACE_
+        printf("[thread][%d], frame %d, timeout %fms, sleep_time %fms\n", ThreadId, FrameNum, Timeout/1000.0, sleep_time/1000.0);
+#endif
+    }
+    else if (timecost > EncodeInterval)
+    {
+        Timeout += timecost - EncodeInterval;
+    }
+}
+
 DWORD WINAPI EncodeProc(_In_ void* Param)
 {
     // Data passed in from thread creation
@@ -359,6 +385,10 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
     FILE* fp = fopen(CapDumpFileName.c_str(), "wb");
 #endif
 
+    uint64_t EncodeInterval = EncParams.framerate_num != 0 ? 1000000 / EncParams.framerate_num : 0;
+    printf("[thread][%d], framerate_num %d, EncodeInterval %fms\n", TData->ThreadId, EncParams.framerate_num, EncodeInterval/1000.0);
+    uint64_t Timeout = 0;
+
     std::chrono::time_point<std::chrono::high_resolution_clock> st_enc_tp = std::chrono::high_resolution_clock::now();
 
     while ((WaitForSingleObjectEx(TData->TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT) && n < inputConfig->frameNum)
@@ -369,26 +399,42 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
         if (BufferQueueSize > 0)
         {
             CurrentData = TData->PtrBufferQueue->DequeueBuffer();
-
+#ifdef _ENABLE_TRACE_
+            std::chrono::time_point<std::chrono::high_resolution_clock> ed_dequeue_stp = std::chrono::high_resolution_clock::now();
+            uint64_t dequeue_timecost = std::chrono::duration_cast<std::chrono::microseconds>(ed_dequeue_stp - starttp).count();
+            printf("[thread][%d], frame %d, dequeue buffer costtime %fms\n", TData->ThreadId, n, dequeue_timecost/1000.0);
+#endif
             if (LastData.CapturedTexture)
             {
                 LastData.CapturedTexture->Release();
                 LastData.CapturedTexture = nullptr;
             }
+            std::chrono::time_point<std::chrono::high_resolution_clock> ed_releaseTex_tp = std::chrono::high_resolution_clock::now();
+#ifdef _ENABLE_TRACE_
+            uint64_t releaseTex_timecost = std::chrono::duration_cast<std::chrono::microseconds>(ed_releaseTex_tp - ed_dequeue_stp).count();
+            printf("[thread][%d], frame %d, release texture costtime %fms\n", TData->ThreadId, n, releaseTex_timecost/1000.0);
+#endif
             LastData = CurrentData;
         }
         else
         {
             //Fake frame, encode last frame
-
+            std::chrono::time_point<std::chrono::high_resolution_clock> cp_starttp = std::chrono::high_resolution_clock::now();
             if (LastData.CapturedTexture)
             {
                 LastData.AcquiredTime++;
                 CurrentData = LastData;
             }
             else
+            {
                 continue;
+            }
         }
+#ifdef _ENABLE_TRACE_
+        std::chrono::time_point<std::chrono::high_resolution_clock> dqbuffer_endtp = std::chrono::high_resolution_clock::now();
+        uint64_t dqbuffer_timecost = std::chrono::duration_cast<std::chrono::microseconds>(dqbuffer_endtp - starttp).count();
+        printf("[thread][%d], frame %d, dequeue buffer total costtime %fms\n", TData->ThreadId, n, dqbuffer_timecost/1000.0);
+#endif
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////
         D3D11_MAPPED_SUBRESOURCE mapped;
 
@@ -400,7 +446,7 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
                 qesStatus sts = qes_video_encode->Encode(CurrentData.CapturedTexture, CurrentData.AcquiredTime);
                 if (QES_ERR_NONE != sts)
                 {
-                    printf("[Thread][%d], frame %d, failed to encode QES frame\n", TData->ThreadId, n);
+                    printf("[thread][%d], frame %d, failed to encode QES frame\n", TData->ThreadId, n);
                     break;
                 }
             }
@@ -409,7 +455,7 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
                 HRESULT hr = TData->DxRes->Context->Map(CurrentData.CapturedTexture, 0, D3D11_MAP_READ, 0, &mapped);
                 if (FAILED(hr))
                 {
-                    printf("[Thread][%d], frame %d, failed to map texture\n", TData->ThreadId, n);
+                    printf("[thread][%d], frame %d, failed to map texture\n", TData->ThreadId, n);
                     CurrentData.CapturedTexture->Release();
                     CurrentData.CapturedTexture = nullptr;
                     continue;
@@ -423,6 +469,7 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
     #endif
                     if (data != NULL)
                     {
+                        std::chrono::time_point<std::chrono::high_resolution_clock> enc_sttp = std::chrono::high_resolution_clock::now();
                         int ret = video_encode->Encode(data, CurrentData.AcquiredTime);
                         while (MRDA_STATUS_NOT_READY == ret)
                         {
@@ -434,11 +481,16 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
                             CurrentData.CapturedTexture = nullptr;
                             break;
                         }
+#ifdef _ENABLE_TRACE_
+                        std::chrono::time_point<std::chrono::high_resolution_clock> enc_endtp = std::chrono::high_resolution_clock::now();
+                        uint64_t enc_timecost = std::chrono::duration_cast<std::chrono::microseconds>(enc_endtp - enc_sttp).count();
+                        printf("[thread][%d], frame %d, encodeframe costtime %fms\n", TData->ThreadId, n, enc_timecost/1000.0);
+#endif
                     }
                 }
                 else
                 {
-                    printf("[Thread][%d], frame %d, No valid mapped Texture Data\n", TData->ThreadId, n);
+                    printf("[thread][%d], frame %d, No valid mapped Texture Data\n", TData->ThreadId, n);
                     CurrentData.CapturedTexture->Release();
                     CurrentData.CapturedTexture = nullptr;
                     continue;
@@ -447,15 +499,13 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
                 TData->DxRes->Context->Unmap(CurrentData.CapturedTexture, 0);
             }
         }
-
         std::chrono::time_point<std::chrono::high_resolution_clock> endtp = std::chrono::high_resolution_clock::now();
         uint64_t timecost = std::chrono::duration_cast<std::chrono::microseconds>(endtp - starttp).count();
-        //printf("thread %d, dequeue frame %d, CurrentData texture ptr %p, AcquiredTime %u, encodeframe costtime %dus\n", TData->ThreadId, n, CurrentData.CapturedTexture, CurrentData.AcquiredTime, timecost);
-        uint64_t EncodeInterval = EncParams.framerate_num != 0 ? 1000000 / EncParams.framerate_num : 0;
-        if (timecost < EncodeInterval)
-        {
-            std::this_thread::sleep_for(std::chrono::microseconds(EncodeInterval - timecost));
-        }
+#ifdef _ENABLE_TRACE_
+        printf("[thread][%d], frame %d, dequeue and encodeframe costtime %fms\n", TData->ThreadId, n, CurrentData.CapturedTexture, CurrentData.AcquiredTime, timecost/1000.0);
+#endif
+
+        ControlFPS(timecost, Timeout, EncodeInterval, n, TData->ThreadId);
 
         n++;
     }
@@ -478,7 +528,7 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
     video_encode = nullptr;
 
     float total_fps = static_cast<float>(n) * 1000000 / enc_duration;
-    printf("[Thread][%d], Total encode frame num: %d, fps: %f\n", TData->ThreadId, n, total_fps);
+    printf("[thread][%d], Total encode frame num: %d, fps: %f\n", TData->ThreadId, n, total_fps);
     return 0;
 }
 
@@ -586,6 +636,7 @@ Exit:
 
     // Make sure all capture threads have exited
     MDSCsample.DeInit();
+    printf("All capture thread terminated\n");
 
     if (ThreadData)
     {
