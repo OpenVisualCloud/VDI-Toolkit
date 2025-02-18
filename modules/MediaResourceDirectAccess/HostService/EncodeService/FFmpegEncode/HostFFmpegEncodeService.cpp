@@ -103,7 +103,8 @@ MRDAStatus HostFFmpegEncodeService::set_hwframe_ctx()
     EncodeParams encodeParams = m_mediaParams->encodeParams;
     frames_ctx = (AVHWFramesContext *)(hw_frames_ref->data);
     frames_ctx->format    = AV_PIX_FMT_VAAPI;
-    frames_ctx->sw_format = AV_PIX_FMT_NV12; // after CSC, the pixel format is NV12
+    //frames_ctx->sw_format = AV_PIX_FMT_NV12; // after CSC, the pixel format is NV12
+    frames_ctx->sw_format = GetColorFormat(encodeParams.color_format);
     frames_ctx->width     = m_avctx->width;
     frames_ctx->height    = m_avctx->height;
     frames_ctx->initial_pool_size = INITIAL_POOL_SIZE;
@@ -218,7 +219,7 @@ AVPixelFormat HostFFmpegEncodeService::GetColorFormat(ColorFormat colorFormat)
     }
     else if (colorFormat == ColorFormat::COLOR_FORMAT_RGBA32)
     {
-        return AVPixelFormat::AV_PIX_FMT_BGRA; // DX screen capture format order
+        return AVPixelFormat::AV_PIX_FMT_BGR0; // DX screen capture format order
     }
     else if (colorFormat == ColorFormat::COLOR_FORMAT_YUV420P)
     {
@@ -404,7 +405,8 @@ AVFrame* HostFFmpegEncodeService::GetSurfaceForEncode(std::shared_ptr<FrameBuffe
     }
 
     EncodeParams encodeParams = m_mediaParams->encodeParams;
-    sw_frame->format = AV_PIX_FMT_NV12; // uniformed color format
+    //sw_frame->format = AV_PIX_FMT_NV12; // uniformed color format
+    sw_frame->format = GetColorFormat(encodeParams.colorFormat);
     sw_frame->width = frame->Width();
     sw_frame->height = frame->Height();
     sw_frame->pts = frame->Pts();
@@ -475,24 +477,36 @@ MRDAStatus HostFFmpegEncodeService::ColorSpaceConvert(AVPixelFormat in_pix_fmt, 
     switch (in_pix_fmt)
     {
         case AVPixelFormat::AV_PIX_FMT_YUV420P:
-            src_data[0] = base_ptr;
-            src_data[1] = base_ptr + width * height;
-            src_data[2] = base_ptr + width * height + width * height / 4;
-            src_data[3] = nullptr;
-            src_linesize[0] = width;
-            src_linesize[1] = width / 2;
-            src_linesize[2] = width / 2;
-            src_linesize[3] = 0;
-            break;
-        case AVPixelFormat::AV_PIX_FMT_BGRA:
-            src_data[0] = base_ptr;
-            src_data[1] = nullptr;
-            src_data[2] = nullptr;
-            src_data[3] = nullptr;
-            src_linesize[0] = width * 4;
-            src_linesize[1] = 0;
-            src_linesize[2] = 0;
-            src_linesize[3] = 0;
+            // Do CSC
+            //src_data[0] = base_ptr;
+            //src_data[1] = base_ptr + width * height;
+            //src_data[2] = base_ptr + width * height + width * height / 4;
+            //src_data[3] = nullptr;
+            //src_linesize[0] = width;
+            //src_linesize[1] = width / 2;
+            //src_linesize[2] = width / 2;
+            //src_linesize[3] = 0;
+            pSurface->data[0] = base_ptr;
+            pSurface->data[1] = base_ptr + width * height;
+            pSurface->data[2] = base_ptr + width * height + width * height / 4;
+            pSurface->linesize[0] = width;
+            pSurface->linesize[1] = width / 2;
+            pSurface->linesize[2] = width / 2;
+            return MRDA_STATUS_SUCCESS;
+	        break;
+        case AVPixelFormat::AV_PIX_FMT_BGR0:
+            // Do CSC
+            //src_data[0] = base_ptr;
+            //src_data[1] = nullptr;
+            //src_data[2] = nullptr;
+            //src_data[3] = nullptr;
+            //src_linesize[0] = width * 4;
+            //src_linesize[1] = 0;
+            //src_linesize[2] = 0;
+            //src_linesize[3] = 0;
+            pSurface->data[0] = base_ptr;
+            pSurface->linesize[0] = width * 4;
+            return MRDA_STATUS_SUCCESS;
             break;
         case AVPixelFormat::AV_PIX_FMT_NV12:
             pSurface->data[0] = base_ptr;
