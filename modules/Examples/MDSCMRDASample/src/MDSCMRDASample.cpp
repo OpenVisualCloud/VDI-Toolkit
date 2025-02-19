@@ -26,8 +26,8 @@
  *
  */
 
-// MDSCSample.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+ // MDSCSample.cpp : This file contains the 'main' function. Program execution begins and ends there.
+ //
 
 #include "MultiDisplayScreenCapture.h"
 #include "MRDAEncodeManager.h"
@@ -55,20 +55,20 @@ typedef enum OUTPUTTYPE
 typedef struct INPUTCONFIG
 {
     // host session
-	std::string hostSessionAddr;                //!< MRDA host session address
+    std::string hostSessionAddr;                //!< MRDA host session address
 
     // I/O
     std::string sourceFile;                     //!< input filename
     std::string sinkFile;                       //!< output filename
-	std::string rtsp_url;                       //!< rtsp url
-	INPUTTYPE input_type;                       //!< input type, capture or file
-	OUTPUTTYPE output_type;                     //!< output type, stream or file
+    std::string rtsp_url;                       //!< rtsp url
+    INPUTTYPE input_type;                       //!< input type, capture or file
+    OUTPUTTYPE output_type;                     //!< output type, stream or file
 
     //capture params
-	uint32_t capture_fps;                       //!< capture fps
-	bool capture_single_display;                //!< capture single display, true of false
-	uint32_t capture_single_display_number;     //!< capture single display number
-	std::string capture_dump_path;              //!< capture rgba file dump path, valid if DUMP_RGBA is defined
+    uint32_t capture_fps;                       //!< capture fps
+    bool capture_single_display;                //!< capture single display, true of false
+    uint32_t capture_single_display_number;     //!< capture single display number
+    std::string capture_dump_path;              //!< capture rgba file dump path, valid if DUMP_RGBA is defined
 
     // share memory info
     uint64_t totalMemorySize;                   //!< total memory size
@@ -80,12 +80,12 @@ typedef struct INPUTCONFIG
     uint32_t out_mem_dev_slot_number;           //!< output memory dev slot number
 
     // encoding params
-	uint32_t frameNum;                          //!< total frame number to encode
-	std::string codec_id;                       //!< codec id, avc or hevc, h264 or h265
+    uint32_t frameNum;                          //!< total frame number to encode
+    std::string codec_id;                       //!< codec id, avc or hevc, h264 or h265
     uint32_t gop_size;                          //!< the distance between two adjacent intra frame
     uint32_t async_depth;                       //!< Specifies how many asynchronous operations an application performs
     std::string target_usage;                   //!< the preset for quality and performance balance,
-                                                //!< balanced, quality, speed
+    //!< balanced, quality, speed
     std::string rc_mode;                        //!< rate control mode, CQP or VBR
     uint32_t qp;                                //!< quantization value under CQP mode
     uint32_t bit_rate;                          //!< bitrate value under VBR mode
@@ -103,10 +103,10 @@ typedef struct INPUTCONFIG
 typedef struct ENCODE_THREAD_INPUT_PARAMS
 {
     HANDLE TerminateThreadsEvent;
-    DX_RESOURCES *DxRes;
-    BufferQueue  *PtrBufferQueue;
+    DX_RESOURCES* DxRes;
+    BufferQueue* PtrBufferQueue;
     UINT ThreadId;
-    InputConfig *inputConfig;
+    InputConfig* inputConfig;
     std::string EncDumpPath;
 
 } EncodeThreadInputParams;
@@ -119,7 +119,7 @@ BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
     return TRUE;
 }
 
-InputType StringToInputType(const char *input_type_str)
+InputType StringToInputType(const char* input_type_str)
 {
     InputType input_type = InputType::CaptureInput;
     if (0 == strcmp(input_type_str, "capture"))
@@ -133,7 +133,7 @@ InputType StringToInputType(const char *input_type_str)
     return input_type;
 }
 
-OutputType StringToOutputType(const char *output_type_str)
+OutputType StringToOutputType(const char* output_type_str)
 {
     OutputType output_type = OutputType::StreamOutput;
     if (0 == strcmp(output_type_str, "stream"))
@@ -147,7 +147,7 @@ OutputType StringToOutputType(const char *output_type_str)
     return output_type;
 }
 
-Encode_Type StringToEncodeType(const char *encode_type_str)
+Encode_Type StringToEncodeType(const char* encode_type_str)
 {
     Encode_Type encode_type = FFmpeg_SW;
     if (0 == strcmp(encode_type_str, "ffmpeg-software"))
@@ -169,7 +169,7 @@ Encode_Type StringToEncodeType(const char *encode_type_str)
     return encode_type;
 }
 
-BOOL ParseConfig(const std::string configFileName, InputConfig *inputConfig)
+BOOL ParseConfig(const std::string configFileName, InputConfig* inputConfig)
 {
     // parse config
     JsonConfig json_config;
@@ -181,7 +181,7 @@ BOOL ParseConfig(const std::string configFileName, InputConfig *inputConfig)
 
     inputConfig->hostSessionAddr = json_config.get_string("MRDA-host-session-address");
     inputConfig->totalMemorySize = json_config.get_uint64("MRDA-memDevSize");
-    inputConfig->bufferNum = json_config.get_uint64("MRDA-bufferNum");
+    inputConfig->bufferNum = json_config.get_uint32("MRDA-bufferNum");
     inputConfig->bufferSize = json_config.get_uint64("MRDA-bufferSize");
     inputConfig->in_mem_dev_path = json_config.get_string("MRDA-inDevPath");
     inputConfig->out_mem_dev_path = json_config.get_string("MRDA-outDevPath");
@@ -193,7 +193,7 @@ BOOL ParseConfig(const std::string configFileName, InputConfig *inputConfig)
     inputConfig->sourceFile = json_config.get_string("inputFile");
     inputConfig->sinkFile = json_config.get_string("outputFile");
     inputConfig->rtsp_url = "rtsp://" + json_config.get_string("rtsp-server-ip") + ":" + json_config.get_string("rtsp-server-port") + "/screencap";
-	inputConfig->frame_width = json_config.get_uint32("inputWidth");
+    inputConfig->frame_width = json_config.get_uint32("inputWidth");
     inputConfig->frame_height = json_config.get_uint32("inputHeight");
     inputConfig->frameNum = json_config.get_uint32("frameNum");
 
@@ -205,30 +205,30 @@ BOOL ParseConfig(const std::string configFileName, InputConfig *inputConfig)
     inputConfig->encode_type = StringToEncodeType(json_config.get_string("encode-type").c_str());
     inputConfig->input_color_format = json_config.get_string("inputColorFormat").c_str();
     inputConfig->output_pixel_format = json_config.get_string("outputPixelFormat").c_str();
-	inputConfig->codec_id = json_config.get_string("encode-codecId").c_str();
+    inputConfig->codec_id = json_config.get_string("encode-codecId").c_str();
     inputConfig->codec_profile = json_config.get_string("encode-codecProfile").c_str();
-	inputConfig->async_depth = json_config.get_uint32("encode-async-depth");
-	inputConfig->target_usage = json_config.get_string("encode-target-usage").c_str();
-	inputConfig->rc_mode = json_config.get_string("encode-rcMode").c_str();
-	inputConfig->qp = json_config.get_uint32("encode-qp");
-	inputConfig->bit_rate = json_config.get_uint32("encode-bitrate");
+    inputConfig->async_depth = json_config.get_uint32("encode-async-depth");
+    inputConfig->target_usage = json_config.get_string("encode-target-usage").c_str();
+    inputConfig->rc_mode = json_config.get_string("encode-rcMode").c_str();
+    inputConfig->qp = json_config.get_uint32("encode-qp");
+    inputConfig->bit_rate = json_config.get_uint32("encode-bitrate");
     inputConfig->framerate_num = json_config.get_uint32("encode-fps");
     inputConfig->framerate_den = 1;
-	inputConfig->gop_size = json_config.get_uint32("encode-gop");
-	inputConfig->max_b_frames = json_config.get_uint32("encode-max-bFrames");
+    inputConfig->gop_size = json_config.get_uint32("encode-gop");
+    inputConfig->max_b_frames = json_config.get_uint32("encode-max-bFrames");
     return TRUE;
 }
 
-BOOL CreateEncodeParams(InputConfig *inputConfig, Encode_Params *encodeParams)
+BOOL CreateEncodeParams(InputConfig* inputConfig, Encode_Params* encodeParams)
 {
-    if ( !inputConfig || !encodeParams )
+    if (!inputConfig || !encodeParams)
     {
         printf("NULL config pointer\n");
         return FALSE;
     }
     encodeParams->output_filename = inputConfig->sinkFile;
     encodeParams->rtsp_url = inputConfig->rtsp_url;
-	encodeParams->bIsRtsp = inputConfig->output_type == OutputType::StreamOutput;
+    encodeParams->bIsRtsp = inputConfig->output_type == OutputType::StreamOutput;
     encodeParams->encode_type = inputConfig->encode_type;
     encodeParams->width = inputConfig->frame_width;
     encodeParams->height = inputConfig->frame_height;
@@ -248,14 +248,14 @@ BOOL CreateEncodeParams(InputConfig *inputConfig, Encode_Params *encodeParams)
     return TRUE;
 }
 
-BOOL CreateMRDAEncodeParams(InputConfig *inputConfig, MRDAEncode_Params *MRDAEncodeParams)
+BOOL CreateMRDAEncodeParams(InputConfig* inputConfig, MRDAEncode_Params* MRDAEncodeParams)
 {
-    if ( !inputConfig || !MRDAEncodeParams )
+    if (!inputConfig || !MRDAEncodeParams)
     {
         printf("NULL config pointer\n");
         return FALSE;
     }
-	MRDAEncodeParams->hostSessionAddr = inputConfig->hostSessionAddr;
+    MRDAEncodeParams->hostSessionAddr = inputConfig->hostSessionAddr;
     MRDAEncodeParams->totalMemorySize = inputConfig->totalMemorySize;
     MRDAEncodeParams->bufferNum = inputConfig->bufferNum;
     MRDAEncodeParams->bufferSize = inputConfig->bufferSize;
@@ -263,13 +263,435 @@ BOOL CreateMRDAEncodeParams(InputConfig *inputConfig, MRDAEncode_Params *MRDAEnc
     MRDAEncodeParams->out_mem_dev_path = inputConfig->out_mem_dev_path;
     MRDAEncodeParams->in_mem_dev_slot_number = inputConfig->in_mem_dev_slot_number;
     MRDAEncodeParams->out_mem_dev_slot_number = inputConfig->out_mem_dev_slot_number;
-	MRDAEncodeParams->frameNum = inputConfig->frameNum;
+    MRDAEncodeParams->frameNum = inputConfig->frameNum;
 
     return TRUE;
 }
 
+BOOL CreateEncodeManager(EncodeThreadInputParams* TData, EncodeManager** video_encode, Encode_Params& EncParams, MRDAEncode_Params& MRDAEncParams)
+{
+    if (FFmpeg_SW == TData->inputConfig->encode_type)
+    {
+        *video_encode = new EncodeManager();
+        if ((*video_encode)->Init(EncParams))
+        {
+            printf("[Thread][%d], Failed to init video encoder\n", TData->ThreadId);
+            return FALSE;
+        }
+    }
+    else if (FFmpeg_MRDA == TData->inputConfig->encode_type || VPL_MRDA == TData->inputConfig->encode_type)
+    {
+        *video_encode = new MRDAEncodeManager();
+        MRDAEncodeManager* mrda_video_encode = dynamic_cast<MRDAEncodeManager*>(*video_encode);
+        MRDAEncParams.encode_params = EncParams;
+        if (mrda_video_encode->Init(MRDAEncParams))
+        {
+            printf("[Thread][%d], Failed to init MRDA video encoder\n", TData->ThreadId);
+            return FALSE;
+        }
+    }
+    else if (QES == TData->inputConfig->encode_type)
+    {
+        *video_encode = new QESEncodeManager();
+        QESEncodeManager* qes_video_encode = dynamic_cast<QESEncodeManager*>(*video_encode);
+        if (QES_ERR_NONE != qes_video_encode->Init(EncParams, TData->DxRes))
+        {
+            printf("[Thread][%d], Failed to init QES video encoder\n", TData->ThreadId);
+            return FALSE;
+        }
+        if (FileInput == TData->inputConfig->input_type)
+        {
+            TData->DxRes = qes_video_encode->GetDXResource();
+        }
+    }
+    return TRUE;
+}
 
-void ControlFPS(uint64_t timecost, uint64_t& Timeout, uint64_t EncodeInterval, int FrameNum, int ThreadId)
+BOOL WaitForCapturedDataReady(EncodeThreadInputParams* TData, Encode_Params& EncParams)
+{
+    while ((WaitForSingleObjectEx(TData->TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT))
+    {
+        if (TData->PtrBufferQueue->GetSize() > 0)
+        {
+            CapturedData Data = TData->PtrBufferQueue->DequeueBuffer();
+
+            if (Data.CapturedTexture)
+            {
+                D3D11_TEXTURE2D_DESC desc;
+                Data.CapturedTexture->GetDesc(&desc);
+                EncParams.width = desc.Width;
+                EncParams.height = desc.Height;
+                Data.CapturedTexture->Release();
+                Data.CapturedTexture = nullptr;
+                printf("[thread][%d], The display resolution is %dx%d\n", TData->ThreadId, desc.Width, desc.Height);
+                break;
+            }
+            else
+            {
+                printf("[Thread][%d], No valid texture in captured data\n", TData->ThreadId);
+                return FALSE;
+            }
+        }
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
+    }
+    return TRUE;
+}
+
+BOOL ReadRawFrame(FILE* fp, uint8_t* data, uint32_t frame_size, UINT threadId)
+{
+    if (nullptr == data || nullptr == fp || 0 == frame_size)
+    {
+        printf("[thread][%d], ReadRawFrame error: invalid input\n", threadId);
+        return FALSE;
+    }
+
+    static int cnt = 0;
+    static long file_size = 0;
+    static int total_frames = 0;
+    if (file_size == 0 || total_frames == 0)
+    {
+        fseek(fp, 0, SEEK_END);
+        file_size = ftell(fp);
+        total_frames = file_size / frame_size;
+    }
+
+    long current_frame_offset = (cnt % total_frames) * frame_size;
+    fseek(fp, current_frame_offset, SEEK_SET);
+    size_t read_size = fread(data, 1, frame_size, fp);
+    if (read_size != frame_size)
+    {
+        printf("[thread][%d], ReadRawFrame error: failed to read the complete frame\n", threadId);
+        return FALSE;
+    }
+
+    cnt++;
+
+    return TRUE;
+}
+
+BOOL GetCapturedFrame(BufferQueue* PtrBufferQueue, CapturedData& CurrentData, CapturedData& LastData, UINT threadId, uint32_t FrameNum)
+{
+    std::chrono::time_point<std::chrono::high_resolution_clock> st_getframe_stp = std::chrono::high_resolution_clock::now();
+
+    int BufferQueueSize = PtrBufferQueue->GetSize();
+    if (BufferQueueSize > 0)
+    {
+        CurrentData = PtrBufferQueue->DequeueBuffer();
+#ifdef _ENABLE_TRACE_
+        std::chrono::time_point<std::chrono::high_resolution_clock> ed_dequeue_stp = std::chrono::high_resolution_clock::now();
+        uint64_t dequeue_timecost = std::chrono::duration_cast<std::chrono::microseconds>(ed_dequeue_stp - st_getframe_stp).count();
+        printf("[thread][%d], frame %d, dequeue buffer costtime %fms\n", threadId, FrameNum, dequeue_timecost / 1000.0);
+#endif
+        if (LastData.CapturedTexture)
+        {
+            LastData.CapturedTexture->Release();
+            LastData.CapturedTexture = nullptr;
+        }
+        std::chrono::time_point<std::chrono::high_resolution_clock> ed_releaseTex_tp = std::chrono::high_resolution_clock::now();
+#ifdef _ENABLE_TRACE_
+        uint64_t releaseTex_timecost = std::chrono::duration_cast<std::chrono::microseconds>(ed_releaseTex_tp - ed_dequeue_stp).count();
+        printf("[thread][%d], frame %d, release texture costtime %fms\n", threadId, FrameNum, releaseTex_timecost / 1000.0);
+#endif
+        LastData = CurrentData;
+    }
+    else
+    {
+        //Fake frame, encode last frame
+        if (LastData.CapturedTexture)
+        {
+            LastData.AcquiredTime++;
+            CurrentData = LastData;
+        }
+        else
+        {
+            return FALSE;
+        }
+    }
+#ifdef _ENABLE_TRACE_
+    std::chrono::time_point<std::chrono::high_resolution_clock> ed_getframe_tp = std::chrono::high_resolution_clock::now();
+    uint64_t getframe_timecost = std::chrono::duration_cast<std::chrono::microseconds>(ed_getframe_tp - st_getframe_stp).count();
+    printf("[thread][%d], frame %d, dequeue buffer total costtime %fms\n", threadId, FrameNum, getframe_timecost / 1000.0);
+#endif
+    return TRUE;
+}
+
+MRDAStatus ReadCapturedFrame(DX_RESOURCES* DxRes, ID3D11Texture2D* CapturedTexture, FrameBufferItem* data, int pts)
+{
+    if (CapturedTexture != nullptr)
+    {
+        D3D11_TEXTURE2D_DESC desc;
+        CapturedTexture->GetDesc(&desc);
+        data->width = desc.Width;
+        data->height = desc.Height;
+        data->bufferItem->occupied_size = data->width * data->height * 4;
+
+        D3D11_MAPPED_SUBRESOURCE mapped;
+        HRESULT hr = DxRes->Context->Map(CapturedTexture, 0, D3D11_MAP_READ, 0, &mapped);
+        if (!FAILED(hr) && mapped.pData)
+        {
+            memcpy(data->bufferItem->buf_ptr, static_cast<uint8_t*>(mapped.pData), data->bufferItem->occupied_size);
+            DxRes->Context->Unmap(CapturedTexture, 0);
+            data->pts = pts;
+        }
+        else
+        {
+            MRDA_LOG(LOG_ERROR, "failed to map texture\n");
+            if (CapturedTexture)
+            {
+                CapturedTexture->Release();
+                CapturedTexture = nullptr;
+            }
+            return MRDA_STATUS_NOT_READY;
+        }
+    }
+    else
+    {
+        MRDA_LOG(LOG_ERROR, "texture is nullptr\n");
+        return MRDA_STATUS_INVALID_DATA;
+    }
+
+    return MRDA_STATUS_SUCCESS;
+}
+
+ID3D11Texture2D* CreateD3D11Texture2D(EncodeThreadInputParams* TData, uint8_t* data, int frame_size)
+{
+    ID3D11Texture2D* texture = nullptr;
+
+    // Describe the texture
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = TData->inputConfig->frame_width;
+    desc.Height = TData->inputConfig->frame_height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    if (!strcmp(TData->inputConfig->input_color_format.c_str(), "nv12"))
+    {
+        desc.Format = DXGI_FORMAT_NV12;
+    }
+    else if (!strcmp(TData->inputConfig->input_color_format.c_str(), "rgb32"))
+    {
+        desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    }
+    else
+    {
+        printf("[thread][%d], Unknown or unsupported color format %s!\n", TData->ThreadId, TData->inputConfig->input_color_format.c_str());
+        return nullptr;
+    }
+    desc.SampleDesc.Count = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = 0;
+    desc.MiscFlags = 0;
+
+    // Set up subresource data
+    D3D11_SUBRESOURCE_DATA initData = {};
+    if (desc.Format == DXGI_FORMAT_NV12) {
+        initData.pSysMem = data;
+        initData.SysMemPitch = TData->inputConfig->frame_width;
+        initData.SysMemSlicePitch = frame_size;
+    }
+    else if (desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM) {
+        // BGRA format: 4 bytes per pixel
+        initData.pSysMem = data;
+        initData.SysMemPitch = TData->inputConfig->frame_width * 4;
+        initData.SysMemSlicePitch = frame_size;
+    }
+
+    // Create the texture
+    HRESULT hr = TData->DxRes->Device->CreateTexture2D(&desc, &initData, &texture);
+    if (FAILED(hr)) {
+        return nullptr;
+    }
+
+    return texture;
+}
+
+BOOL EncodeCapturedFrame(EncodeThreadInputParams* TData, CapturedData& CurrentData, EncodeManager* video_encode, uint32_t frameNum, FILE* dump_fp = nullptr)
+{
+    D3D11_MAPPED_SUBRESOURCE mapped;
+    if (CurrentData.CapturedTexture)
+    {
+        if (QES == TData->inputConfig->encode_type)
+        {
+            QESEncodeManager* qes_video_encode = dynamic_cast<QESEncodeManager*>(video_encode);
+            qesStatus sts = qes_video_encode->Encode(CurrentData.CapturedTexture, CurrentData.AcquiredTime);
+            if (QES_ERR_NONE != sts)
+            {
+                printf("[thread][%d], frame %u, failed to encode QES frame\n", TData->ThreadId, frameNum);
+                return FALSE;
+            }
+        }
+        else
+        {
+            HRESULT hr = TData->DxRes->Context->Map(CurrentData.CapturedTexture, 0, D3D11_MAP_READ, 0, &mapped);
+            if (FAILED(hr))
+            {
+                printf("[thread][%d], frame %u, failed to map texture\n", TData->ThreadId, frameNum);
+                CurrentData.CapturedTexture->Release();
+                CurrentData.CapturedTexture = nullptr;
+                return FALSE;
+            }
+
+            if (mapped.pData)
+            {
+                uint8_t* data = static_cast<uint8_t*>(mapped.pData);
+#ifdef DUMP_RGBA
+                fwrite(data, mapped.DepthPitch, 1, dump_fp);
+#endif
+                if (data != NULL)
+                {
+#ifdef _ENABLE_TRACE_
+                    std::chrono::time_point<std::chrono::high_resolution_clock> enc_sttp = std::chrono::high_resolution_clock::now();
+#endif
+                    if (FFmpeg_SW == TData->inputConfig->encode_type)
+                    {
+                        if (0 != video_encode->Encode(data, CurrentData.AcquiredTime))
+                        {
+                            CurrentData.CapturedTexture->Release();
+                            CurrentData.CapturedTexture = nullptr;
+                            printf("[thread][%d], frame %u, ffmpeg software failed to encode frame\n", TData->ThreadId, frameNum);
+                            return FALSE;
+                        }
+                    }
+                    else if (FFmpeg_MRDA == TData->inputConfig->encode_type || VPL_MRDA == TData->inputConfig->encode_type)
+                    {
+                        MRDAEncodeManager* mrda_video_encode = dynamic_cast<MRDAEncodeManager*>(video_encode);
+                        FrameBufferItem* pInputBuffer = mrda_video_encode->GetBufferForInput();
+                        if (nullptr == pInputBuffer || mapped.DepthPitch != pInputBuffer->bufferItem->occupied_size)
+                        {
+                            CurrentData.CapturedTexture->Release();
+                            CurrentData.CapturedTexture = nullptr;
+                            printf("[thread][%d], frame %u, MRDA failed to get buffer for input\n", TData->ThreadId, frameNum);
+                            return FALSE;
+                        }
+                        pInputBuffer->pts = CurrentData.AcquiredTime;
+                        memcpy(pInputBuffer->bufferItem->buf_ptr, data, pInputBuffer->bufferItem->occupied_size);
+                        if (0 != mrda_video_encode->Encode())
+                        {
+                            CurrentData.CapturedTexture->Release();
+                            CurrentData.CapturedTexture = nullptr;
+                            printf("[thread][%d], frame %u, MRDA failed to encode frame\n", TData->ThreadId, frameNum);
+                            return FALSE;
+                        }
+                    }
+#ifdef _ENABLE_TRACE_
+                    std::chrono::time_point<std::chrono::high_resolution_clock> enc_endtp = std::chrono::high_resolution_clock::now();
+                    uint64_t enc_timecost = std::chrono::duration_cast<std::chrono::microseconds>(enc_endtp - enc_sttp).count();
+                    printf("[thread][%d], frame %u, encodeframe costtime %fms\n", TData->ThreadId, frameNum, enc_timecost / 1000.0);
+#endif
+                }
+            }
+            else
+            {
+                printf("[thread][%d], frame %u, No valid mapped Texture Data\n", TData->ThreadId, frameNum);
+                CurrentData.CapturedTexture->Release();
+                CurrentData.CapturedTexture = nullptr;
+                return true;
+            }
+
+            TData->DxRes->Context->Unmap(CurrentData.CapturedTexture, 0);
+        }
+    }
+    return TRUE;
+}
+
+uint64_t CalRawFrameSize(std::string colorFormat, int width, int height, UINT threadId)
+{
+    int frame_size = 0;
+    if (!strcmp(colorFormat.c_str(), "nv12") || !strcmp(colorFormat.c_str(), "yuv420p"))
+    {
+        frame_size = width * height * 3 / 2;
+    }
+    else if (!strcmp(colorFormat.c_str(), "rgb32"))
+    {
+        frame_size = width * height * 4;
+    }
+    else
+    {
+        printf("[thread][%d], Unknown or unsupported color format %s!\n", threadId, colorFormat.c_str());
+    }
+
+    return frame_size;
+}
+
+BOOL EncodeFileRawFrame(EncodeThreadInputParams* TData, FILE* fpSource, EncodeManager* video_encode, uint8_t* data, uint64_t FrameSize, uint32_t frameNum, FILE* dump_fp = nullptr)
+{
+#ifdef _ENABLE_TRACE_
+    std::chrono::time_point<std::chrono::high_resolution_clock> enc_sttp = std::chrono::high_resolution_clock::now();
+#endif
+
+    if (FFmpeg_SW == TData->inputConfig->encode_type)
+    {
+        if (ReadRawFrame(fpSource, data, FrameSize, TData->ThreadId))
+        {
+            if (0 != video_encode->Encode(data, frameNum))
+            {
+                printf("[thread][%d], frame %u, ffmpeg software failed to encode file raw frame\n", TData->ThreadId, frameNum);
+                return FALSE;
+            }
+        }
+    }
+    else if (FFmpeg_MRDA == TData->inputConfig->encode_type || VPL_MRDA == TData->inputConfig->encode_type)
+    {
+        MRDAEncodeManager* mrda_video_encode = dynamic_cast<MRDAEncodeManager*>(video_encode);
+        FrameBufferItem* pInputBuffer = mrda_video_encode->GetBufferForInput();
+        if (nullptr == pInputBuffer)
+        {
+            printf("[thread][%d], frame %u, MRDA failed to get buffer for input\n", TData->ThreadId, frameNum);
+            return FALSE;
+        }
+        if (FrameSize != pInputBuffer->bufferItem->occupied_size)
+        {
+            printf("[thread][%d], frame %u, MRDA failed to get buffer for input\n", TData->ThreadId, frameNum);
+            pInputBuffer->uninit();
+            return FALSE;
+        }
+        if (ReadRawFrame(fpSource, pInputBuffer->bufferItem->buf_ptr, FrameSize, TData->ThreadId))
+        {
+            pInputBuffer->bufferItem->occupied_size = FrameSize;
+            pInputBuffer->pts = frameNum;
+            if (MRDA_STATUS_SUCCESS != mrda_video_encode->Encode())
+            {
+                printf("[thread][%d], frame %u, MRDA failed to encode frame\n", TData->ThreadId, frameNum);
+                return FALSE;
+            }
+        }
+    }
+    else if (QES == TData->inputConfig->encode_type)
+    {
+        if (ReadRawFrame(fpSource, data, FrameSize, TData->ThreadId))
+        {
+            QESEncodeManager* qes_video_encode = dynamic_cast<QESEncodeManager*>(video_encode);
+            ID3D11Texture2D* texture = CreateD3D11Texture2D(TData, data, FrameSize);
+            if (nullptr == texture)
+            {
+                printf("[thread][%d], frame %u, QES failed to create texture with input raw frame\n", TData->ThreadId, frameNum);
+            }
+            if (QES_ERR_NONE != qes_video_encode->Encode(texture, frameNum))
+            {
+                printf("[thread][%d], frame %u, failed to encode QES file raw frame\n", TData->ThreadId, frameNum);
+                texture->Release();
+                texture = nullptr;
+                return FALSE;
+            }
+            texture->Release();
+            texture = nullptr;
+        }
+    }
+
+#ifdef _ENABLE_TRACE_
+    std::chrono::time_point<std::chrono::high_resolution_clock> enc_endtp = std::chrono::high_resolution_clock::now();
+    uint64_t enc_timecost = std::chrono::duration_cast<std::chrono::microseconds>(enc_endtp - enc_sttp).count();
+    printf("[thread][%d], frame %u, encodeframe costtime %fms\n", TData->ThreadId, frameNum, enc_timecost / 1000.0);
+#endif
+
+    return TRUE;
+}
+
+void ControlFPS(uint64_t timecost, uint64_t& Timeout, uint64_t EncodeInterval, uint32_t FrameNum, int ThreadId)
 {
     if (timecost < EncodeInterval)
     {
@@ -285,7 +707,7 @@ void ControlFPS(uint64_t timecost, uint64_t& Timeout, uint64_t EncodeInterval, i
             std::this_thread::sleep_for(std::chrono::microseconds(sleep_time));
         }
 #ifdef _ENABLE_TRACE_
-        printf("[thread][%d], frame %d, timeout %fms, sleep_time %fms\n", ThreadId, FrameNum, Timeout/1000.0, sleep_time/1000.0);
+        printf("[thread][%d], frame %u, timeout %fms, sleep_time %fms\n", ThreadId, FrameNum, Timeout / 1000.0, sleep_time / 1000.0);
 #endif
     }
     else if (timecost > EncodeInterval)
@@ -298,223 +720,110 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
 {
     // Data passed in from thread creation
     EncodeThreadInputParams* TData = reinterpret_cast<EncodeThreadInputParams*>(Param);
-
     InputConfig* inputConfig = TData->inputConfig;
     Encode_Params EncParams;
     MRDAEncode_Params MRDAEncParams;
-    if(!CreateEncodeParams(inputConfig, &EncParams))
+    FILE* fpSource = nullptr;
+
+    // Prepare Encode Params
+    if (!CreateEncodeParams(inputConfig, &EncParams))
     {
         printf("fail to create encode params\n");
     }
     EncParams.threadId = TData->ThreadId;
 
-    if(!CreateMRDAEncodeParams(inputConfig, &MRDAEncParams))
+    if (!CreateMRDAEncodeParams(inputConfig, &MRDAEncParams))
     {
         printf("fail to create mrda encode params\n");
     }
 
-    while ((WaitForSingleObjectEx(TData->TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT))
+    // Prepare Input Data
+    if (inputConfig->input_type == CaptureInput)
     {
-        if (TData->PtrBufferQueue->GetSize() > 0)
-        {
-            CapturedData Data = TData->PtrBufferQueue->DequeueBuffer();
-
-            D3D11_TEXTURE2D_DESC desc;
-
-            if (Data.CapturedTexture)
-            {
-                Data.CapturedTexture->GetDesc(&desc);
-                EncParams.width = desc.Width;
-                EncParams.height = desc.Height;
-                Data.CapturedTexture->Release();
-                Data.CapturedTexture = nullptr;
-                printf("[thread][%d], The display resolution is %dx%d\n", TData->ThreadId, desc.Width, desc.Height);
-                break;
-            }
-            else
-            {
-                printf("[Thread][%d], No valid texture in captured data\n", TData->ThreadId);
-                return -1;
-            }
-        }
-        else
-        {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
-        }
+        if (!WaitForCapturedDataReady(TData, EncParams))
+            return -1;
     }
-
-    EncParams.st_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
-    EncodeManager *video_encode = nullptr;
-    if(FFmpeg_SW == TData->inputConfig->encode_type)
+    else if (inputConfig->input_type == FileInput)
     {
-        video_encode = new EncodeManager();
-        if (video_encode->Init(EncParams))
+        if (fopen_s(&fpSource, inputConfig->sourceFile.c_str(), "rb") != 0)
         {
-            printf("[Thread][%d], Failed to init video encoder\n", TData->ThreadId);
+            printf("[Thread][%d], open input file %s failed!\n", TData->ThreadId, inputConfig->sourceFile.c_str());
             return -1;
         }
     }
-    else if(FFmpeg_MRDA == TData->inputConfig->encode_type || VPL_MRDA == TData->inputConfig->encode_type)
+    else
     {
-        video_encode = new MRDAEncodeManager();
-		MRDAEncodeManager* mrda_video_encode = dynamic_cast<MRDAEncodeManager*>(video_encode);
-		MRDAEncParams.encode_params = EncParams;
-		if (mrda_video_encode->Init(MRDAEncParams))
-		{
-			printf("[Thread][%d], Failed to init MRDA video encoder\n", TData->ThreadId);
-			return -1;
-		}
-    }
-    else if(QES == TData->inputConfig->encode_type)
-    {
-        video_encode = new QESEncodeManager();
-        QESEncodeManager* qes_video_encode = dynamic_cast<QESEncodeManager*>(video_encode);
-        if (qes_video_encode->Init(EncParams, TData->DxRes))
-        {
-            printf("[Thread][%d], Failed to init QES video encoder\n", TData->ThreadId);
-            return -1;
-        }
+        printf("Error: Unsupported input type\n");
+        return -1;
     }
 
-    uint32_t n = 0;
+    //Create EncodeManager
+    EncodeManager* video_encode = nullptr;
+    if (!CreateEncodeManager(TData, &video_encode, EncParams, MRDAEncParams))
+        return -1;
+
+    //Start Get Input Frame and Encode Loop
+    uint32_t FrameNum = 0;
     CapturedData CurrentData = CapturedData{};
     CapturedData LastData = CapturedData{};
+    uint8_t* FileData = nullptr;
+
+    uint64_t FrameSize = CalRawFrameSize(TData->inputConfig->input_color_format, TData->inputConfig->frame_width, TData->inputConfig->frame_height, TData->ThreadId);
+    FileData = new uint8_t[FrameSize];
+
 #ifdef DUMP_RGBA
     std::string CapDumpFileName = TData->inputConfig->capture_dump_path + std::to_string(TData->ThreadId) + ".rgba";
-    FILE* fp = fopen(CapDumpFileName.c_str(), "wb");
+    FILE* fpDump = fopen(CapDumpFileName.c_str(), "wb");
 #endif
 
     uint64_t EncodeInterval = EncParams.framerate_num != 0 ? 1000000 / EncParams.framerate_num : 0;
-    printf("[thread][%d], framerate_num %d, EncodeInterval %fms\n", TData->ThreadId, EncParams.framerate_num, EncodeInterval/1000.0);
+    printf("[thread][%d], framerate_num %d, EncodeInterval %fms\n", TData->ThreadId, EncParams.framerate_num, EncodeInterval / 1000.0);
     uint64_t Timeout = 0;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> st_enc_tp = std::chrono::high_resolution_clock::now();
 
-    while ((WaitForSingleObjectEx(TData->TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT) && n < inputConfig->frameNum)
+    while ((WaitForSingleObjectEx(TData->TerminateThreadsEvent, 0, FALSE) == WAIT_TIMEOUT) && FrameNum < inputConfig->frameNum)
     {
         std::chrono::time_point<std::chrono::high_resolution_clock> starttp = std::chrono::high_resolution_clock::now();
 
-        int BufferQueueSize = TData->PtrBufferQueue->GetSize();
-        if (BufferQueueSize > 0)
+        if (inputConfig->input_type == CaptureInput)
         {
-            CurrentData = TData->PtrBufferQueue->DequeueBuffer();
-#ifdef _ENABLE_TRACE_
-            std::chrono::time_point<std::chrono::high_resolution_clock> ed_dequeue_stp = std::chrono::high_resolution_clock::now();
-            uint64_t dequeue_timecost = std::chrono::duration_cast<std::chrono::microseconds>(ed_dequeue_stp - starttp).count();
-            printf("[thread][%d], frame %d, dequeue buffer costtime %fms\n", TData->ThreadId, n, dequeue_timecost/1000.0);
+            if (!GetCapturedFrame(TData->PtrBufferQueue, CurrentData, LastData, TData->ThreadId, FrameNum))
+                continue;
+#ifdef DUMP_RGBA
+            if (EncodeCapturedFrame(TData, CurrentData, video_encode, FrameNum, fpDump))
+#else
+            if (!EncodeCapturedFrame(TData, CurrentData, video_encode, FrameNum))
 #endif
-            if (LastData.CapturedTexture)
-            {
-                LastData.CapturedTexture->Release();
-                LastData.CapturedTexture = nullptr;
-            }
-            std::chrono::time_point<std::chrono::high_resolution_clock> ed_releaseTex_tp = std::chrono::high_resolution_clock::now();
-#ifdef _ENABLE_TRACE_
-            uint64_t releaseTex_timecost = std::chrono::duration_cast<std::chrono::microseconds>(ed_releaseTex_tp - ed_dequeue_stp).count();
-            printf("[thread][%d], frame %d, release texture costtime %fms\n", TData->ThreadId, n, releaseTex_timecost/1000.0);
-#endif
-            LastData = CurrentData;
+                break;
+        }
+        else if (inputConfig->input_type == FileInput)
+        {
+            if (!EncodeFileRawFrame(TData, fpSource, video_encode, FileData, FrameSize, FrameNum))
+                break;
         }
         else
         {
-            //Fake frame, encode last frame
-            std::chrono::time_point<std::chrono::high_resolution_clock> cp_starttp = std::chrono::high_resolution_clock::now();
-            if (LastData.CapturedTexture)
-            {
-                LastData.AcquiredTime++;
-                CurrentData = LastData;
-            }
-            else
-            {
-                continue;
-            }
+            printf("Error: Unsupported input type\n");
+            return -1;
         }
-#ifdef _ENABLE_TRACE_
-        std::chrono::time_point<std::chrono::high_resolution_clock> dqbuffer_endtp = std::chrono::high_resolution_clock::now();
-        uint64_t dqbuffer_timecost = std::chrono::duration_cast<std::chrono::microseconds>(dqbuffer_endtp - starttp).count();
-        printf("[thread][%d], frame %d, dequeue buffer total costtime %fms\n", TData->ThreadId, n, dqbuffer_timecost/1000.0);
-#endif
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        D3D11_MAPPED_SUBRESOURCE mapped;
 
-        if (CurrentData.CapturedTexture)
-        {
-            if (QES == TData->inputConfig->encode_type)
-            {
-                QESEncodeManager* qes_video_encode = dynamic_cast<QESEncodeManager*>(video_encode);
-                qesStatus sts = qes_video_encode->Encode(CurrentData.CapturedTexture, CurrentData.AcquiredTime);
-                if (QES_ERR_NONE != sts)
-                {
-                    printf("[thread][%d], frame %d, failed to encode QES frame\n", TData->ThreadId, n);
-                    break;
-                }
-            }
-            else
-            {
-                HRESULT hr = TData->DxRes->Context->Map(CurrentData.CapturedTexture, 0, D3D11_MAP_READ, 0, &mapped);
-                if (FAILED(hr))
-                {
-                    printf("[thread][%d], frame %d, failed to map texture\n", TData->ThreadId, n);
-                    CurrentData.CapturedTexture->Release();
-                    CurrentData.CapturedTexture = nullptr;
-                    continue;
-                }
-
-                if (mapped.pData)
-                {
-                    uint8_t* data = static_cast<uint8_t*>(mapped.pData);
-    #ifdef DUMP_RGBA
-                    fwrite(data, mapped.DepthPitch, 1, fp);
-    #endif
-                    if (data != NULL)
-                    {
-                        std::chrono::time_point<std::chrono::high_resolution_clock> enc_sttp = std::chrono::high_resolution_clock::now();
-                        int ret = video_encode->Encode(data, CurrentData.AcquiredTime);
-                        while (MRDA_STATUS_NOT_READY == ret)
-                        {
-                            ret = video_encode->Encode(data, CurrentData.AcquiredTime);
-                        }
-                        if (ret != 0)
-                        {
-                            CurrentData.CapturedTexture->Release();
-                            CurrentData.CapturedTexture = nullptr;
-                            break;
-                        }
-#ifdef _ENABLE_TRACE_
-                        std::chrono::time_point<std::chrono::high_resolution_clock> enc_endtp = std::chrono::high_resolution_clock::now();
-                        uint64_t enc_timecost = std::chrono::duration_cast<std::chrono::microseconds>(enc_endtp - enc_sttp).count();
-                        printf("[thread][%d], frame %d, encodeframe costtime %fms\n", TData->ThreadId, n, enc_timecost/1000.0);
-#endif
-                    }
-                }
-                else
-                {
-                    printf("[thread][%d], frame %d, No valid mapped Texture Data\n", TData->ThreadId, n);
-                    CurrentData.CapturedTexture->Release();
-                    CurrentData.CapturedTexture = nullptr;
-                    continue;
-                }
-
-                TData->DxRes->Context->Unmap(CurrentData.CapturedTexture, 0);
-            }
-        }
         std::chrono::time_point<std::chrono::high_resolution_clock> endtp = std::chrono::high_resolution_clock::now();
         uint64_t timecost = std::chrono::duration_cast<std::chrono::microseconds>(endtp - starttp).count();
 #ifdef _ENABLE_TRACE_
-        printf("[thread][%d], frame %d, dequeue and encodeframe costtime %fms\n", TData->ThreadId, n, CurrentData.CapturedTexture, CurrentData.AcquiredTime, timecost/1000.0);
+        printf("[thread][%d], frame %u, dequeue and encodeframe costtime %fms\n", TData->ThreadId, FrameNum, timecost / 1000.0);
 #endif
 
-        ControlFPS(timecost, Timeout, EncodeInterval, n, TData->ThreadId);
+        ControlFPS(timecost, Timeout, EncodeInterval, FrameNum, TData->ThreadId);
 
-        n++;
+        FrameNum++;
     }
 
-	std::chrono::time_point<std::chrono::high_resolution_clock> ed_enc_tp = std::chrono::high_resolution_clock::now();
+    std::chrono::time_point<std::chrono::high_resolution_clock> ed_enc_tp = std::chrono::high_resolution_clock::now();
     uint64_t enc_duration = std::chrono::duration_cast<std::chrono::microseconds>(ed_enc_tp - st_enc_tp).count();
 
 #ifdef DUMP_RGBA
-    fclose(fp);
+    fclose(fpDump);
 #endif
     video_encode->End_video_output();
 
@@ -524,11 +833,23 @@ DWORD WINAPI EncodeProc(_In_ void* Param)
         CurrentData.CapturedTexture = nullptr;
     }
 
+    if (nullptr != FileData)
+    {
+        delete[]FileData;
+        FileData = nullptr;
+    }
+
     delete video_encode;
     video_encode = nullptr;
 
-    float total_fps = static_cast<float>(n) * 1000000 / enc_duration;
-    printf("[thread][%d], Total encode frame num: %d, fps: %f\n", TData->ThreadId, n, total_fps);
+    if (inputConfig->input_type == FileInput)
+    {
+        fclose(fpSource);
+        fpSource = nullptr;
+    }
+
+    float total_fps = static_cast<float>(FrameNum) * 1000000 / enc_duration;
+    printf("[thread][%d], Total encode frame num: %u, fps: %f\n", TData->ThreadId, FrameNum, total_fps);
     return 0;
 }
 
@@ -539,41 +860,74 @@ int main()
     // parse config
     InputConfig inputConfig = {};
     std::string configFilename = "MDSCMRDASample.conf";
-    if(!ParseConfig(configFilename, &inputConfig))
+    if (!ParseConfig(configFilename, &inputConfig))
     {
         printf("fail to parse config\n");
     }
 
     // init and start capture
+    std::vector<std::string> InputFileNames;
     MultiDisplayScreenCapture MDSCsample;
-    MDSCsample.Init();
-    UINT DispNum = MDSCsample.GetDisplayCount();
-    printf("Display Num is %d\n", DispNum);
+    UINT DispNum = 0;
+    UINT OutNum = 0;
+    BufferQueue* BufferQueues = nullptr;
 
-    if (inputConfig.capture_single_display)
+    if (inputConfig.input_type == CaptureInput)
     {
-        if (inputConfig.capture_single_display_number < DispNum)
+        MDSCsample.Init();
+        DispNum = MDSCsample.GetDisplayCount();
+        printf("Display Num is %d\n", DispNum);
+
+        if (inputConfig.capture_single_display)
         {
-            printf("Capture single display Id %d as config selected\n", inputConfig.capture_single_display_number);
+            if (inputConfig.capture_single_display_number < DispNum)
+            {
+                printf("Capture single display Id %d as config selected\n", inputConfig.capture_single_display_number);
+            }
+            else
+            {
+                printf("Invalid single display Id %d in config, capture single disp 0 as default\n", inputConfig.capture_single_display_number);
+                inputConfig.capture_single_display_number = 0;
+            }
+            MDSCsample.SetSingleDisplay(inputConfig.capture_single_display_number);
         }
-        else
+
+        OutNum = MDSCsample.GetOutputCount();
+        printf("Output Num is %d\n", OutNum);
+
+        MDSCsample.SetCaptureFps(inputConfig.capture_fps);
+
+        MDSCsample.StartCaptureScreen();
+
+        BufferQueues = MDSCsample.GetBufferQueues();
+    }
+    else if (inputConfig.input_type == FileInput)
+    {
+        printf("FileInput: ");
+        size_t pos = 0;
+        std::string inputfilename = inputConfig.sourceFile;
+        while ((pos = inputfilename.find(',')) != std::string::npos)
         {
-            printf("Invalid single display Id %d in config, capture single disp 0 as default\n", inputConfig.capture_single_display_number);
-            inputConfig.capture_single_display_number = 0;
+            std::string filename = inputfilename.substr(0, pos);
+            InputFileNames.push_back(filename);
+            inputfilename.erase(0, pos + 1);
+            OutNum++;
+            printf("%s ", filename.c_str());
         }
-        MDSCsample.SetSingleDisplay(inputConfig.capture_single_display_number);
+        if (!inputfilename.empty()) {
+            InputFileNames.push_back(inputfilename);
+            OutNum++;
+            printf("%s ", inputfilename.c_str());
+        }
+        printf("\n");
+    }
+    else
+    {
+        printf("Error: Unsupported input type\n");
+        return -1;
     }
 
-    UINT OutNum = MDSCsample.GetOutputCount();
-    printf("Output Num is %d\n", OutNum);
-
-    MDSCsample.SetCaptureFps(inputConfig.capture_fps);
-
-    MDSCsample.StartCaptureScreen();
-
     // init and start encode and stream
-    BufferQueue* BufferQueues = MDSCsample.GetBufferQueues();
-
     EncodeThreadInputParams* ThreadData = new EncodeThreadInputParams[OutNum];
     HANDLE* ThreadHandles = new HANDLE[OutNum];
 
@@ -588,10 +942,11 @@ int main()
     for (UINT i = 0; i < OutNum; ++i)
     {
         ThreadData[i].TerminateThreadsEvent = TerminateEncodeEvent;
-        ThreadData[i].DxRes = MDSCsample.GetDXResource(i);
+        ThreadData[i].DxRes = inputConfig.input_type == CaptureInput ? MDSCsample.GetDXResource(i) : nullptr;
         ThreadData[i].PtrBufferQueue = &BufferQueues[i];
-        ThreadData[i].ThreadId = inputConfig.capture_single_display ? inputConfig.capture_single_display_number : i;
+        ThreadData[i].ThreadId = inputConfig.input_type == CaptureInput && inputConfig.capture_single_display ? inputConfig.capture_single_display_number : i;
         ThreadData[i].inputConfig = &inputConfig;
+        ThreadData[i].inputConfig->sourceFile = inputConfig.input_type == FileInput ? InputFileNames[i] : "";
         ThreadData[i].EncDumpPath = inputConfig.sinkFile;
 
         DWORD ThreadId;
@@ -614,7 +969,7 @@ int main()
         }
         for (UINT i = 0; i < OutNum; ++i)
         {
-            DWORD res = WaitForSingleObjectEx(ThreadHandles[i], 1000/inputConfig.framerate_num, false);
+            DWORD res = WaitForSingleObjectEx(ThreadHandles[i], 1000 / inputConfig.framerate_num, false);
             if (res != WAIT_TIMEOUT)
             {
                 printf("Checked that encode thread ended %d\n", i);
@@ -635,12 +990,16 @@ Exit:
     CloseHandle(TerminateEncodeEvent);
 
     // Make sure all capture threads have exited
-    MDSCsample.DeInit();
-    printf("All capture thread terminated\n");
+    if (inputConfig.input_type == CaptureInput)
+    {
+        MDSCsample.TerminateCaptureScreen();
+        MDSCsample.DeInit();
+        printf("All capture thread terminated\n");
+    }
 
     if (ThreadData)
     {
-        delete [] ThreadData;
+        delete[] ThreadData;
         ThreadData = nullptr;
     }
 

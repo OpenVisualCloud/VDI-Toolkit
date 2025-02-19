@@ -51,7 +51,7 @@ add_executable(${TARGET}
   ${DIR_SRC}
   )
 
-target_link_libraries(${TARGET} QESLib libWinGuest MultiDisplayScreenCapture avcodec avdevice avfilter avformat avutil postproc swresample swscale)
+target_link_libraries(${TARGET} QESLib D3D11 libWinGuest MultiDisplayScreenCapture avcodec avdevice avfilter avformat avutil postproc swresample swscale)
 
 include_directories(
 ${CMAKE_CURRENT_SOURCE_DIR}/../../../MediaResourceDirectAccess/Scripts/Windows/lib/install/include

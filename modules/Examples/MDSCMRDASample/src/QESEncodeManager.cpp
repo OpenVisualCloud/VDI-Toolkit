@@ -30,7 +30,10 @@
 #include <atlbase.h>
 
 QESEncodeManager::QESEncodeManager() : m_pQESCore(nullptr),
-                                       m_pQESEncoder(nullptr)
+                                       m_pQESEncoder(nullptr),
+                                       m_pDxRes(nullptr),
+                                       m_bDxResInitialized(false),
+                                       m_uFrameNum(0)
 {
 
 }
@@ -38,12 +41,19 @@ QESEncodeManager::QESEncodeManager() : m_pQESCore(nullptr),
 QESEncodeManager::~QESEncodeManager()
 {
     DestroyQES();
+    if (m_bDxResInitialized)
+    {
+        if (m_pDxRes)
+        {
+            ReleaseDxResources(m_pDxRes);
+        }
+    }
     printf("[thread][%d], ~QESEncodeManager\n", m_uThreadId);
 }
 
-qesStatus QESEncodeManager::Init(const Encode_Params &encode_params, DX_RESOURCES *DxRes)
+qesStatus QESEncodeManager::Init(const Encode_Params& encode_params, DX_RESOURCES* DxRes)
 {
-    if( EncodeManager::InitAVContext(encode_params) < 0 )
+    if (EncodeManager::InitAVContext(encode_params) < 0)
     {
         printf("[thread][%d], InitVideoContext failed!\n", m_uThreadId);
         return QES_ERR_UNKNOWN;
@@ -65,15 +75,15 @@ qesStatus QESEncodeManager::Init(const Encode_Params &encode_params, DX_RESOURCE
     return QES_ERR_NONE;
 }
 
-qesStatus QESEncodeManager::Encode(ID3D11Texture2D *texture, uint64_t timestamp)
+qesStatus QESEncodeManager::Encode(ID3D11Texture2D* texture, uint64_t timestamp)
 {
 #ifdef _ENABLE_TRACE_
     std::chrono::time_point<std::chrono::high_resolution_clock> st_enc_tp = std::chrono::high_resolution_clock::now();
 #endif
-    if(nullptr == texture)
+    if (nullptr == texture)
     {
         printf("[thread][%d], texture is nullptr\n", m_uThreadId);
-		return QES_ERR_UNKNOWN;
+        return QES_ERR_UNKNOWN;
     }
     qesTextureHandle handle{};
     handle.ptr = texture;
@@ -96,8 +106,8 @@ qesStatus QESEncodeManager::Encode(ID3D11Texture2D *texture, uint64_t timestamp)
             sts = m_pQESEncoder->GetBitstream(&pbs);
             if (QES_ERR_NONE == sts || QES_ERR_NONE_PARTIAL_OUTPUT == sts)
             {
-                AVPacket *pPkt = EncodeManager::m_pPkt;
-                if (!pPkt){
+                AVPacket* pPkt = EncodeManager::m_pPkt;
+                if (!pPkt) {
                     MRDA_LOG(LOG_ERROR, "[thread][%d], QESEncod AVPacket is nullptr\n", m_uThreadId);
                     return QES_ERR_UNKNOWN;
                 }
@@ -127,10 +137,75 @@ qesStatus QESEncodeManager::Encode(ID3D11Texture2D *texture, uint64_t timestamp)
 
     m_pQESCore->UnregisterTexture(pIFrame);
 
+#ifdef _ENABLE_TRACE_
+    std::chrono::time_point<std::chrono::high_resolution_clock> ed_enc_tp = std::chrono::high_resolution_clock::now();
+    uint64_t enc_timecost = std::chrono::duration_cast<std::chrono::microseconds>(ed_enc_tp - st_enc_tp).count();
+    printf("[thread][%d], frame %u, QES Encode frame time cost %fms\n", m_uThreadId, m_uFrameNum, enc_timecost / 1000.0);
+#endif
+
+    m_uFrameNum++;
     return QES_ERR_NONE;
 }
 
-qesStatus QESEncodeManager::InitQES(qesEncodeParameters *qesencode_params, DX_RESOURCES *DxRes)
+qesStatus QESEncodeManager::InitDXResources(DX_RESOURCES* DxRes)
+{
+    static D3D_DRIVER_TYPE D3DDriverTypes[] =
+    {
+        D3D_DRIVER_TYPE_HARDWARE,
+        D3D_DRIVER_TYPE_REFERENCE,
+        D3D_DRIVER_TYPE_SOFTWARE,
+        D3D_DRIVER_TYPE_WARP
+    };
+
+    static D3D_FEATURE_LEVEL D3DFeatureLevels[] =
+    {
+        D3D_FEATURE_LEVEL_11_0,
+        D3D_FEATURE_LEVEL_10_1,
+        D3D_FEATURE_LEVEL_10_1,
+        D3D_FEATURE_LEVEL_10_0
+    };
+
+    UINT DriverTypesTotalNum = ARRAYSIZE(D3DDriverTypes);
+    UINT FeatureLevelsTotalNum = ARRAYSIZE(D3DFeatureLevels);
+    D3D_FEATURE_LEVEL FeatureLevel;
+    HRESULT hr = S_OK;
+    for (int i = 0; i < ARRAYSIZE(D3DDriverTypes); i++)
+    {
+        hr = D3D11CreateDevice(nullptr, D3DDriverTypes[i], nullptr, 0, D3DFeatureLevels, FeatureLevelsTotalNum, D3D11_SDK_VERSION, &DxRes->Device, &FeatureLevel, &DxRes->Context);
+        if (SUCCEEDED(hr))
+        {
+            break;
+        }
+    }
+
+    if (FAILED(hr))
+    {
+        return QES_ERR_UNKNOWN;
+    }
+    return QES_ERR_NONE;
+}
+
+void QESEncodeManager::ReleaseDxResources(DX_RESOURCES* DxRes)
+{
+    if (DxRes->Device)
+    {
+        DxRes->Device->Release();
+        DxRes->Device = nullptr;
+    }
+
+    if (DxRes->Context)
+    {
+        DxRes->Context->Release();
+        DxRes->Context = nullptr;
+    }
+}
+
+DX_RESOURCES* QESEncodeManager::GetDXResource()
+{
+    return m_pDxRes;
+}
+
+qesStatus QESEncodeManager::InitQES(qesEncodeParameters* qesencode_params, DX_RESOURCES* DxRes)
 {
     qesStatus sts = QES_ERR_NONE;
     m_pQESCore = m_pQESCore->CreateInstance();
@@ -142,8 +217,22 @@ qesStatus QESEncodeManager::InitQES(qesEncodeParameters *qesencode_params, DX_RE
         return sts;
     }
 
+    if (nullptr == DxRes)
+    {
+        DxRes = new DX_RESOURCES();
+        sts = InitDXResources(DxRes);
+        if (QES_ERR_NONE != sts)
+        {
+            printf("[thread][%d], Failed to set QES Core Module\n", m_uThreadId);
+            return sts;
+        }
+        m_pDxRes = DxRes;
+        m_bDxResInitialized = true;
+    }
+
     CComQIPtr<ID3D10Multithread> pMultiThread(DxRes->Context);
-    if( pMultiThread)
+
+    if (pMultiThread)
     {
         pMultiThread->SetMultithreadProtected(true);
     }
@@ -176,7 +265,7 @@ qesStatus QESEncodeManager::DestroyQES()
 }
 
 
-qesStatus QESEncodeManager::CreateQESEncodeParams(const Encode_Params &encode_params)
+qesStatus QESEncodeManager::CreateQESEncodeParams(const Encode_Params& encode_params)
 {
     m_pQESEncodeParams->Width = encode_params.width;
     m_pQESEncodeParams->Height = encode_params.height;
@@ -208,7 +297,7 @@ qesStatus QESEncodeManager::CreateQESEncodeParams(const Encode_Params &encode_pa
     return QES_ERR_NONE;
 }
 
-uint32_t QESEncodeManager::StringToCodecID(const char *codec_id)
+uint32_t QESEncodeManager::StringToCodecID(const char* codec_id)
 {
     uint32_t streamCodecId = QES_CODEC_AVC;
     if (!strcmp(codec_id, "h264") || !strcmp(codec_id, "avc"))
@@ -230,7 +319,7 @@ uint32_t QESEncodeManager::StringToCodecID(const char *codec_id)
     return streamCodecId;
 }
 
-uint32_t QESEncodeManager::StringToTargetUsage(const char *target_usage)
+uint32_t QESEncodeManager::StringToTargetUsage(const char* target_usage)
 {
     uint32_t targetUsage = 0; //MFX_TARGETUSAGE_UNKNOWN
     if (!strcmp(target_usage, "balanced"))
@@ -252,7 +341,7 @@ uint32_t QESEncodeManager::StringToTargetUsage(const char *target_usage)
     return targetUsage;
 }
 
-uint32_t QESEncodeManager::StringToRCMode(const char *rc_mode)
+uint32_t QESEncodeManager::StringToRCMode(const char* rc_mode)
 {
     uint32_t RCMode = QES_RATECONTROL_VBR;
     if (!strcmp(rc_mode, "CQP"))
@@ -270,7 +359,7 @@ uint32_t QESEncodeManager::StringToRCMode(const char *rc_mode)
     return RCMode;
 }
 
-uint32_t QESEncodeManager::StringToColorFormat(const char *color_format)
+uint32_t QESEncodeManager::StringToColorFormat(const char* color_format)
 {
     uint32_t colorFormat = QES_FOURCC_RGB4;
     if (!strcmp(color_format, "rgb32"))
@@ -284,7 +373,7 @@ uint32_t QESEncodeManager::StringToColorFormat(const char *color_format)
     return colorFormat;
 }
 
-uint32_t QESEncodeManager::StringToCodecProfile(const char *codec_profile)
+uint32_t QESEncodeManager::StringToCodecProfile(const char* codec_profile)
 {
     uint32_t codecProfile = QES_PROFILE_UNKNOWN;
     if (!strcmp(codec_profile, "avc:main"))

@@ -34,29 +34,36 @@
 #include "Common.h"
 #include "qes_core.h"
 #include "qes_encode.h"
+#include <d3d11.h>
 
 class QESEncodeManager : public EncodeManager
 {
 public:
     QESEncodeManager();
     virtual ~QESEncodeManager();
-    virtual qesStatus Init(const Encode_Params &encode_params, DX_RESOURCES *DxRes);
-    virtual qesStatus Encode(ID3D11Texture2D *texture, uint64_t timestamp);
+    virtual qesStatus Init(const Encode_Params& encode_params, DX_RESOURCES* DxRes);
+    virtual qesStatus Encode(ID3D11Texture2D* texture, uint64_t timestamp);
+    virtual DX_RESOURCES* GetDXResource();
 
 private:
-    qesStatus InitQES(qesEncodeParameters *qesencode_params, DX_RESOURCES *DxRes);
+    qesStatus InitQES(qesEncodeParameters* qesencode_params, DX_RESOURCES* DxRes);
     qesStatus DestroyQES();
-    qesStatus CreateQESEncodeParams(const Encode_Params &encode_params);
-    uint32_t StringToCodecID(const char *codec_id);
-    uint32_t StringToTargetUsage(const char *target_usage);
-    uint32_t StringToRCMode(const char *rc_mode);
-    uint32_t StringToColorFormat(const char *color_format);
-    uint32_t StringToCodecProfile(const char *codec_profile);
+    qesStatus CreateQESEncodeParams(const Encode_Params& encode_params);
+    qesStatus InitDXResources(DX_RESOURCES* DxRes);
+    void ReleaseDxResources(DX_RESOURCES* DxRes);
+    uint32_t StringToCodecID(const char* codec_id);
+    uint32_t StringToTargetUsage(const char* target_usage);
+    uint32_t StringToRCMode(const char* rc_mode);
+    uint32_t StringToColorFormat(const char* color_format);
+    uint32_t StringToCodecProfile(const char* codec_profile);
 
 private: //QES Related
-    qesCore *m_pQESCore;
-    qesEncode *m_pQESEncoder;
+    qesCore* m_pQESCore;
+    qesEncode* m_pQESEncoder;
     std::shared_ptr<qesEncodeParameters> m_pQESEncodeParams;
+    DxResources* m_pDxRes;
+    bool m_bDxResInitialized;
+    uint32_t m_uFrameNum;
 };
 
 #endif

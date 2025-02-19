@@ -30,7 +30,7 @@
 
 MRDAEncodeManager::MRDAEncodeManager() : m_pMRDA_handle(nullptr),
                                          m_pTerminateThreadEvent(nullptr),
-	                                     m_pThreadHandle(nullptr),
+                                         m_pThreadHandle(nullptr),
                                          m_dwThreadId(0),
                                          m_nSendFrameCount(0),
                                          m_nReceiveFrameCount(0)
@@ -41,29 +41,29 @@ MRDAEncodeManager::MRDAEncodeManager() : m_pMRDA_handle(nullptr),
 MRDAEncodeManager::~MRDAEncodeManager()
 {
     MRDA_LOG(LOG_INFO, "[thread][%d], ~MRDAEncodeManager", m_uThreadId);
-	MediaResourceDirectAccess_Destroy(m_pMRDA_handle);
+    MediaResourceDirectAccess_Destroy(m_pMRDA_handle);
 }
 
-MRDAStatus MRDAEncodeManager::Init(const MRDAEncode_Params &MRDAEncodeParams)
+MRDAStatus MRDAEncodeManager::Init(const MRDAEncode_Params& MRDAEncodeParams)
 {
-    if( EncodeManager::InitAVContext(MRDAEncodeParams.encode_params) < 0 )
+    if (EncodeManager::InitAVContext(MRDAEncodeParams.encode_params) < 0)
     {
-		MRDA_LOG(LOG_ERROR, "[thread][%d], InitVideoContext failed!", m_uThreadId);
-		return MRDA_STATUS_OPERATION_FAIL;
+        MRDA_LOG(LOG_ERROR, "[thread][%d], InitVideoContext failed!", m_uThreadId);
+        return MRDA_STATUS_OPERATION_FAIL;
     }
 
     if (MRDA_STATUS_SUCCESS != InitMRDA(MRDAEncodeParams))
-	{
-		MRDA_LOG(LOG_ERROR, "[thread][%d], InitMRDA failed!", m_uThreadId);
-		return MRDA_STATUS_OPERATION_FAIL;
-	}
+    {
+        MRDA_LOG(LOG_ERROR, "[thread][%d], InitMRDA failed!", m_uThreadId);
+        return MRDA_STATUS_OPERATION_FAIL;
+    }
 
     m_pMediaParams = std::make_shared<MediaParams>();
     if (MRDA_STATUS_SUCCESS != CreateMediaParams(MRDAEncodeParams))
-	{
-		MRDA_LOG(LOG_ERROR, "[thread][%d], CreateMediaParams failed!", m_uThreadId);
-		return MRDA_STATUS_OPERATION_FAIL;
-	}
+    {
+        MRDA_LOG(LOG_ERROR, "[thread][%d], CreateMediaParams failed!", m_uThreadId);
+        return MRDA_STATUS_OPERATION_FAIL;
+    }
 
     if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_SetInitParams(m_pMRDA_handle, m_pMediaParams.get()))
     {
@@ -86,72 +86,90 @@ MRDAStatus MRDAEncodeManager::Init(const MRDAEncode_Params &MRDAEncodeParams)
     }
 
     MRDA_LOG(LOG_INFO, "[thread][%d], MRDAEncodeManager Init Successed!", m_uThreadId);
-	return MRDA_STATUS_SUCCESS;
+    return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus MRDAEncodeManager::Encode(uint8_t* data, uint64_t timestamp)
+FrameBufferItem* MRDAEncodeManager::GetBufferForInput()
 {
 #ifdef _ENABLE_TRACE_
-    std::chrono::time_point<std::chrono::high_resolution_clock> st_enc_tp = std::chrono::high_resolution_clock::now();
+    std::chrono::time_point<std::chrono::high_resolution_clock> st_getbuffer_tp = std::chrono::high_resolution_clock::now();
 #endif
-	if (nullptr == data)
-	{
-		MRDA_LOG(LOG_ERROR, "[thread][%d], data is nullptr", m_uThreadId);
-		return MRDA_STATUS_INVALID_PARAM;
-	}
-
     // get input buffer
-    std::shared_ptr<FrameBufferItem> inBuffer = nullptr;
-    if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_GetBufferForInput(m_pMRDA_handle, inBuffer))
+    bool bBufferNotReady = true;
+    while (bBufferNotReady)
     {
-        MRDA_LOG(LOG_WARNING, "[thread][%d], get buffer for input failed!", m_uThreadId);
-        Sleep(10); // 10ms
-        return MRDA_STATUS_NOT_READY;
-    }
-    if (inBuffer == nullptr)
-    {
-        MRDA_LOG(LOG_ERROR, "[thread][%d], Input buffer is empty!", m_uThreadId);
-        return MRDA_STATUS_INVALID_DATA;
+        if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_GetBufferForInput(m_pMRDA_handle, m_pInputBuffer))
+        {
+            MRDA_LOG(LOG_WARNING, "[thread][%d], get buffer for input failed!", m_uThreadId);
+            Sleep(10); // 10ms
+            continue;
+        }
+        if (m_pInputBuffer == nullptr)
+        {
+            MRDA_LOG(LOG_ERROR, "[thread][%d], Input buffer is empty!", m_uThreadId);
+            continue;
+        }
+        bBufferNotReady = false;
     }
 
-    // fill input buffer
-    inBuffer->width = m_pMediaParams->encodeParams.frame_width;
-    inBuffer->height = m_pMediaParams->encodeParams.frame_height;
+    // fill in input buffer params
+    m_pInputBuffer->width = m_pMediaParams->encodeParams.frame_width;
+    m_pInputBuffer->height = m_pMediaParams->encodeParams.frame_height;
 
     switch (m_pMediaParams->encodeParams.color_format)
     {
     case ColorFormat::COLOR_FORMAT_NV12:
     case ColorFormat::COLOR_FORMAT_YUV420P:
-        inBuffer->bufferItem->occupied_size = inBuffer->width * inBuffer->height * 3 / 2;
+        m_pInputBuffer->bufferItem->occupied_size = m_pInputBuffer->width * m_pInputBuffer->height * 3 / 2;
         break;
     case ColorFormat::COLOR_FORMAT_RGBA32:
-        inBuffer->bufferItem->occupied_size = inBuffer->width * inBuffer->height * 4;
+        m_pInputBuffer->bufferItem->occupied_size = m_pInputBuffer->width * m_pInputBuffer->height * 4;
         break;
     case ColorFormat::COLOR_FORMAT_NONE:
     default:
-        MRDA_LOG(LOG_ERROR, "[thread][%d], ERROR: invalid color format", m_uThreadId);
+        MRDA_LOG(LOG_WARNING, "[thread][%d], ERROR: invalid color format, default process as RGBA", m_uThreadId);
+        m_pInputBuffer->bufferItem->occupied_size = m_pInputBuffer->width * m_pInputBuffer->height * 4;
+        break;
+    }
+
+#ifdef _ENABLE_TRACE_
+    std::chrono::time_point<std::chrono::high_resolution_clock> end_getbuffer_tp = std::chrono::high_resolution_clock::now();
+    uint64_t getbuffer_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_getbuffer_tp - st_getbuffer_tp).count();
+    MRDA_LOG(LOG_INFO, "[thread][%d], MediaResourceDirectAccess get buffer for input successed, framecount %d, timecost %lldms", m_uThreadId, m_nSendFrameCount, getbuffer_duration / 1000);
+#endif
+
+    return m_pInputBuffer.get();
+}
+
+MRDAStatus MRDAEncodeManager::Encode()
+{
+#ifdef _ENABLE_TRACE_
+    std::chrono::time_point<std::chrono::high_resolution_clock> st_enc_tp = std::chrono::high_resolution_clock::now();
+#endif
+    if (m_pInputBuffer == nullptr)
+    {
+        MRDA_LOG(LOG_ERROR, "[thread][%d], Input buffer is empty when encoding frame!", m_uThreadId);
         return MRDA_STATUS_INVALID_DATA;
     }
-    inBuffer->pts = timestamp;
-    memcpy(inBuffer->bufferItem->buf_ptr, data, inBuffer->bufferItem->occupied_size);
 
     // mrda encode
-	if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_SendFrame(m_pMRDA_handle, inBuffer))
-	{
-		MRDA_LOG(LOG_ERROR, "[thread][%d], MediaResourceDirectAccess_Encode failed!", m_uThreadId);
-		return MRDA_STATUS_OPERATION_FAIL;
-	}
+    if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_SendFrame(m_pMRDA_handle, m_pInputBuffer))
+    {
+        MRDA_LOG(LOG_ERROR, "[thread][%d], MediaResourceDirectAccess_Encode failed!", m_uThreadId);
+        m_pInputBuffer->uninit();
+        return MRDA_STATUS_OPERATION_FAIL;
+    }
 
-    inBuffer->uninit();
+    m_pInputBuffer->uninit();
 
     std::lock_guard<std::mutex> lock(m_mutex);
     m_nSendFrameCount++;
 #ifdef _ENABLE_TRACE_
     std::chrono::time_point<std::chrono::high_resolution_clock> ed_enc_tp = std::chrono::high_resolution_clock::now();
     uint64_t enc_duration = std::chrono::duration_cast<std::chrono::microseconds>(ed_enc_tp - st_enc_tp).count();
-    MRDA_LOG(LOG_INFO, "[thread][%d], MediaResourceDirectAccess send frame successed, framecount %d, timecost %lldms", m_uThreadId, m_nSendFrameCount, enc_duration/1000);
+    MRDA_LOG(LOG_INFO, "[thread][%d], MediaResourceDirectAccess send frame successed, framecount %d, timecost %lldms", m_uThreadId, m_nSendFrameCount, enc_duration / 1000);
 #endif
-	return MRDA_STATUS_SUCCESS;
+    return MRDA_STATUS_SUCCESS;
 }
 
 MRDAStatus MRDAEncodeManager::End_video_output()
@@ -174,31 +192,31 @@ MRDAStatus MRDAEncodeManager::End_video_output()
     av_write_trailer(EncodeManager::m_pVideoOfmtCtx);
     MRDA_LOG(LOG_INFO, "[thread][%d], End_video_output, av_write_trailer successed", m_uThreadId);
 
-	if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_Stop(m_pMRDA_handle))
-	{
-		MRDA_LOG(LOG_ERROR, "[thread][%d], MediaResourceDirectAccess_End_video_output failed!", m_uThreadId);
-		return MRDA_STATUS_OPERATION_FAIL;
-	}
+    if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_Stop(m_pMRDA_handle))
+    {
+        MRDA_LOG(LOG_ERROR, "[thread][%d], MediaResourceDirectAccess_End_video_output failed!", m_uThreadId);
+        return MRDA_STATUS_OPERATION_FAIL;
+    }
     MRDA_LOG(LOG_INFO, "[thread][%d], MRDA stopped successed", m_uThreadId);
-	return MRDA_STATUS_SUCCESS;
+    return MRDA_STATUS_SUCCESS;
 }
 
-MRDAStatus MRDAEncodeManager::InitMRDA(const MRDAEncode_Params &MRDAEncodeParams)
+MRDAStatus MRDAEncodeManager::InitMRDA(const MRDAEncode_Params& MRDAEncodeParams)
 {
     TaskInfo taskInfo = {};
     if (FFmpeg_MRDA == MRDAEncodeParams.encode_params.encode_type)
     {
-         taskInfo.taskType = TASKTYPE::taskFFmpegEncode;
-	}
-	else if (VPL_MRDA == MRDAEncodeParams.encode_params.encode_type)
-	{
-		taskInfo.taskType = TASKTYPE::taskOneVPLEncode;
-	}
-	else
-	{
-		MRDA_LOG(LOG_ERROR, "[thread][%d], Unsupported MRDA Task Type: %d", m_uThreadId, MRDAEncodeParams.encode_params.encode_type);
-		return MRDA_STATUS_INVALID_PARAM;
-	}
+        taskInfo.taskType = TASKTYPE::taskFFmpegEncode;
+    }
+    else if (VPL_MRDA == MRDAEncodeParams.encode_params.encode_type)
+    {
+        taskInfo.taskType = TASKTYPE::taskOneVPLEncode;
+    }
+    else
+    {
+        MRDA_LOG(LOG_ERROR, "[thread][%d], Unsupported MRDA Task Type: %d", m_uThreadId, MRDAEncodeParams.encode_params.encode_type);
+        return MRDA_STATUS_INVALID_PARAM;
+    }
 
     taskInfo.taskStatus = TASKStatus::TASK_STATUS_UNKNOWN;
     taskInfo.taskID = 0;
@@ -208,25 +226,25 @@ MRDAStatus MRDAEncodeManager::InitMRDA(const MRDAEncode_Params &MRDAEncodeParams
 
     ExternalConfig config = {};
     config.hostSessionAddr = MRDAEncodeParams.hostSessionAddr;
-	m_pMRDA_handle = MediaResourceDirectAccess_Init(&taskInfo, &config);
+    m_pMRDA_handle = MediaResourceDirectAccess_Init(&taskInfo, &config);
     if (m_pMRDA_handle == nullptr)
-	{
-		MRDA_LOG(LOG_ERROR, "[thread][%d], MediaResourceDirectAccess_Create failed!", m_uThreadId);
-		return MRDA_STATUS_OPERATION_FAIL;
-	}
+    {
+        MRDA_LOG(LOG_ERROR, "[thread][%d], MediaResourceDirectAccess_Create failed!", m_uThreadId);
+        return MRDA_STATUS_OPERATION_FAIL;
+    }
 
-	return MRDA_STATUS_SUCCESS;
+    return MRDA_STATUS_SUCCESS;
 }
 
 MRDAStatus MRDAEncodeManager::DestroyMRDA()
 {
-	if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_Destroy(&m_pMRDA_handle))
-	{
-		MRDA_LOG(LOG_ERROR, "[thread][%d], MediaResourceDirectAccess_Destroy failed!", m_uThreadId);
-		return MRDA_STATUS_OPERATION_FAIL;
-	}
+    if (MRDA_STATUS_SUCCESS != MediaResourceDirectAccess_Destroy(&m_pMRDA_handle))
+    {
+        MRDA_LOG(LOG_ERROR, "[thread][%d], MediaResourceDirectAccess_Destroy failed!", m_uThreadId);
+        return MRDA_STATUS_OPERATION_FAIL;
+    }
 
-	return MRDA_STATUS_SUCCESS;
+    return MRDA_STATUS_SUCCESS;
 }
 
 void MRDAEncodeManager::ReceiveFrameThread()
@@ -251,8 +269,8 @@ void MRDAEncodeManager::ReceiveFrameThread()
         MRDA_LOG(LOG_INFO, "[thread][%d], Encoding trace log: complete receive frame in sample encode, framecount %d, pts: %llu", m_uThreadId, m_nReceiveFrameCount, outBuffer->pts);
 #endif
         int ret = 0;
-        AVPacket * pPkt = EncodeManager::m_pPkt;
-        if (!pPkt){
+        AVPacket* pPkt = EncodeManager::m_pPkt;
+        if (!pPkt) {
             MRDA_LOG(LOG_ERROR, "[thread][%d], AVPacket is nullptr", m_uThreadId);
             return;
         }
@@ -303,11 +321,11 @@ MRDAStatus MRDAEncodeManager::FlushFrame()
         }
         // success
 #ifdef _ENABLE_TRACE_
-        MRDA_LOG(LOG_INFO, "[thread][%d], Encoding trace log: complete receive frame in sample encode, framecount %d, pts: %llu", m_nReceiveFrameCount, outBuffer->pts);
+        MRDA_LOG(LOG_INFO, "[thread][%d], Encoding trace log: complete receive frame in sample encode, framecount %d, pts: %llu", m_uThreadId, m_nReceiveFrameCount, outBuffer->pts);
 #endif
         int ret = 0;
-        AVPacket * pPkt = EncodeManager::m_pPkt;
-        if (!pPkt){
+        AVPacket* pPkt = EncodeManager::m_pPkt;
+        if (!pPkt) {
             MRDA_LOG(LOG_ERROR, "[thread][%d], AVPacket is nullptr", m_uThreadId);
             return MRDA_STATUS_INVALID_DATA;
         }
@@ -338,15 +356,15 @@ MRDAStatus MRDAEncodeManager::FlushFrame()
 }
 
 
-MRDAStatus MRDAEncodeManager::CreateMediaParams(const MRDAEncode_Params &MRDAEncodeParams)
+MRDAStatus MRDAEncodeManager::CreateMediaParams(const MRDAEncode_Params& MRDAEncodeParams)
 {
     m_pMediaParams->shareMemoryInfo.totalMemorySize = MRDAEncodeParams.totalMemorySize;
     m_pMediaParams->shareMemoryInfo.bufferNum = MRDAEncodeParams.bufferNum;
     m_pMediaParams->shareMemoryInfo.bufferSize = MRDAEncodeParams.bufferSize;
     m_pMediaParams->shareMemoryInfo.in_mem_dev_path = MRDAEncodeParams.in_mem_dev_path + std::to_string(m_uThreadId);
     m_pMediaParams->shareMemoryInfo.out_mem_dev_path = MRDAEncodeParams.out_mem_dev_path + std::to_string(m_uThreadId);
-    m_pMediaParams->shareMemoryInfo.in_mem_dev_slot_number = MRDAEncodeParams.in_mem_dev_slot_number + m_uThreadId*2;
-    m_pMediaParams->shareMemoryInfo.out_mem_dev_slot_number = MRDAEncodeParams.out_mem_dev_slot_number + m_uThreadId*2;
+    m_pMediaParams->shareMemoryInfo.in_mem_dev_slot_number = MRDAEncodeParams.in_mem_dev_slot_number + m_uThreadId * 2;
+    m_pMediaParams->shareMemoryInfo.out_mem_dev_slot_number = MRDAEncodeParams.out_mem_dev_slot_number + m_uThreadId * 2;
 
     m_pMediaParams->encodeParams.codec_id = StringToCodecID(MRDAEncodeParams.encode_params.codec_id.c_str());
     m_pMediaParams->encodeParams.gop_size = MRDAEncodeParams.encode_params.gop;
@@ -366,9 +384,9 @@ MRDAStatus MRDAEncodeManager::CreateMediaParams(const MRDAEncode_Params &MRDAEnc
     return MRDA_STATUS_SUCCESS;
 }
 
-StreamCodecID MRDAEncodeManager::StringToCodecID(const char *codec_id)
+StreamCodecID MRDAEncodeManager::StringToCodecID(const char* codec_id)
 {
-	StreamCodecID streamCodecId = StreamCodecID::CodecID_NONE;
+    StreamCodecID streamCodecId = StreamCodecID::CodecID_NONE;
     if (!strcmp(codec_id, "h264") || !strcmp(codec_id, "avc"))
     {
         streamCodecId = StreamCodecID::CodecID_AVC;
@@ -388,9 +406,9 @@ StreamCodecID MRDAEncodeManager::StringToCodecID(const char *codec_id)
     return streamCodecId;
 }
 
-TargetUsage MRDAEncodeManager::StringToTargetUsage(const char *target_usage)
+TargetUsage MRDAEncodeManager::StringToTargetUsage(const char* target_usage)
 {
-	TargetUsage targetUsage = TargetUsage::Balanced;
+    TargetUsage targetUsage = TargetUsage::Balanced;
     if (!strcmp(target_usage, "balanced"))
     {
         targetUsage = TargetUsage::Balanced;
@@ -406,7 +424,7 @@ TargetUsage MRDAEncodeManager::StringToTargetUsage(const char *target_usage)
     return targetUsage;
 }
 
-uint32_t MRDAEncodeManager::StringToRCMode(const char *rc_mode)
+uint32_t MRDAEncodeManager::StringToRCMode(const char* rc_mode)
 {
     if (!strcmp(rc_mode, "CQP"))
     {
@@ -418,13 +436,13 @@ uint32_t MRDAEncodeManager::StringToRCMode(const char *rc_mode)
     }
     else
     {
-		return 0;
-	}
+        return 0;
+    }
 }
 
-ColorFormat MRDAEncodeManager::StringToColorFormat(const char *color_format)
+ColorFormat MRDAEncodeManager::StringToColorFormat(const char* color_format)
 {
-	ColorFormat colorFormat = ColorFormat::COLOR_FORMAT_NONE;
+    ColorFormat colorFormat = ColorFormat::COLOR_FORMAT_NONE;
     if (!strcmp(color_format, "rgb32"))
     {
         colorFormat = ColorFormat::COLOR_FORMAT_RGBA32;
@@ -440,9 +458,9 @@ ColorFormat MRDAEncodeManager::StringToColorFormat(const char *color_format)
     return colorFormat;
 }
 
-CodecProfile MRDAEncodeManager::StringToCodecProfile(const char *codec_profile)
+CodecProfile MRDAEncodeManager::StringToCodecProfile(const char* codec_profile)
 {
-	CodecProfile codecProfile = CodecProfile::PROFILE_NONE;
+    CodecProfile codecProfile = CodecProfile::PROFILE_NONE;
     if (!strcmp(codec_profile, "avc:main"))
     {
         codecProfile = CodecProfile::PROFILE_AVC_MAIN;
@@ -473,7 +491,7 @@ CodecProfile MRDAEncodeManager::StringToCodecProfile(const char *codec_profile)
 uint32_t MRDAEncodeManager::GetSendFrameCount()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-	return m_nSendFrameCount;
+    return m_nSendFrameCount;
 }
 uint32_t MRDAEncodeManager::GetReceiveFrameCount()
 {

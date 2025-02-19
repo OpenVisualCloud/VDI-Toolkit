@@ -33,6 +33,7 @@ EncodeManager::EncodeManager() : m_uThreadId(0),
                                  m_ulPts(0),
                                  m_uFrameNum(0),
                                  m_bIsRtsp(false),
+                                 m_bNeedSws(false),
                                  m_sRtspUrl(""),
                                  m_sOutputFilename(""),
                                  m_pPkt(nullptr),
@@ -52,18 +53,23 @@ EncodeManager::~EncodeManager()
 
 int EncodeManager::Init(const Encode_Params& encode_params)
 {
-	if(InitAVContext(encode_params) < 0)
+    if (InitAVContext(encode_params) < 0)
     {
         printf("[thread][%d], Failed to init EncodeManager\n", m_uThreadId);
         return -1;
     }
-    if(Init_swrContext(GetCodecColorFormat(encode_params.input_color_format), GetCodecColorFormat(encode_params.output_pixel_format)) < 0)
+
+    if (strcmp(encode_params.input_color_format.c_str(), encode_params.output_pixel_format.c_str()))
     {
-        printf("[thread][%d], Failed to init swrContext\n", m_uThreadId);
-        return -1;
+        m_bNeedSws = true;
+        if (Init_swrContext(GetCodecColorFormat(encode_params.input_color_format), GetCodecColorFormat(encode_params.output_pixel_format)) < 0)
+        {
+            printf("[thread][%d], Failed to init swrContext\n", m_uThreadId);
+            return -1;
+        }
     }
 
-	return 0;
+    return 0;
 }
 
 int EncodeManager::InitAVContext(const Encode_Params& encode_params)
@@ -79,7 +85,7 @@ int EncodeManager::InitAVContext(const Encode_Params& encode_params)
 
     if (m_bIsRtsp)
     {
-        m_sRtspUrl = encode_params.rtsp_url + std::to_string(m_uThreadId) ;
+        m_sRtspUrl = encode_params.rtsp_url + std::to_string(m_uThreadId);
         m_ulPts = encode_params.st_timestamp;
     }
     else
@@ -114,7 +120,7 @@ int EncodeManager::InitAVContext(const Encode_Params& encode_params)
     if (av_frame_get_buffer(m_pFrame, 0) < 0)
     {
         printf("[thread][%d], Could not allocate the video frame data\n", m_uThreadId);
-        return - 1;
+        return -1;
     }
 
     printf("[thread][%d], InitAVContext successed\n", m_uThreadId);
@@ -159,11 +165,19 @@ int EncodeManager::Encode(uint8_t* data, uint64_t timestamp)
 #ifdef _ENABLE_TRACE_
     std::chrono::time_point<std::chrono::high_resolution_clock> cv_starttp = std::chrono::high_resolution_clock::now();
 #endif
-    BGRA2YUV(data, m_pCodecCtx->width, m_pCodecCtx->height);
+    if (m_bNeedSws)
+    {
+        ColorConvert(data, m_pCodecCtx->width, m_pCodecCtx->height);
+    }
+    else
+    {
+        av_image_fill_arrays(m_pFrame->data, m_pFrame->linesize, data, m_pCodecCtx->pix_fmt, m_pCodecCtx->width, m_pCodecCtx->height, 1);
+        m_pFrame->pts = m_ulPts;
+    }
 #ifdef _ENABLE_TRACE_
     std::chrono::time_point<std::chrono::high_resolution_clock> cv_endtp = std::chrono::high_resolution_clock::now();
     uint64_t timecost = std::chrono::duration_cast<std::chrono::microseconds>(cv_endtp - cv_starttp).count();
-    printf("[thread][%d], frame %d, BGRA2YUV time cost %fms\n", m_uThreadId, m_uFrameNum, timecost/1000.0);
+    printf("[thread][%d], frame %u, ColorConvert time cost %fms\n", m_uThreadId, m_uFrameNum, timecost / 1000.0);
 #endif
 
     int ret = avcodec_send_frame(m_pCodecCtx, m_pFrame);
@@ -183,7 +197,7 @@ int EncodeManager::Encode(uint8_t* data, uint64_t timestamp)
         }
         else if (ret < 0)
         {
-            printf("[thread][%d], frame %d, Error during encoding\n", m_uThreadId, m_uFrameNum);
+            printf("[thread][%d], frame %u, Error during encoding\n", m_uThreadId, m_uFrameNum);
             m_uFrameNum++;
             return -1;
         }
@@ -196,7 +210,7 @@ int EncodeManager::Encode(uint8_t* data, uint64_t timestamp)
             std::chrono::time_point<std::chrono::high_resolution_clock> enc_endtp = std::chrono::high_resolution_clock::now();
 #ifdef _ENABLE_TRACE_
             uint64_t enc_timecost = std::chrono::duration_cast<std::chrono::microseconds>(enc_endtp - cv_endtp).count();
-            printf("[thread][%d], frame %d, rtsp mode Encode time cost %fms\n", m_uThreadId, m_uFrameNum, enc_timecost/1000.0);
+            printf("[thread][%d], frame %u, rtsp mode Encode time cost %fms\n", m_uThreadId, m_uFrameNum, enc_timecost / 1000.0);
 #endif
         }
         else
@@ -214,7 +228,7 @@ int EncodeManager::Encode(uint8_t* data, uint64_t timestamp)
 #ifdef _ENABLE_TRACE_
         std::chrono::time_point<std::chrono::high_resolution_clock> wt_endtp = std::chrono::high_resolution_clock::now();
         uint64_t wt_timecost = std::chrono::duration_cast<std::chrono::microseconds>(wt_endtp - wt_starttp).count();
-        printf("[thread][%d], frame %d, write frame time cost %fms\n", m_uThreadId, m_uFrameNum, wt_timecost/1000.0);
+        printf("[thread][%d], frame %u, write frame time cost %fms\n", m_uThreadId, m_uFrameNum, wt_timecost / 1000.0);
 #endif
     }
     m_uFrameNum++;
@@ -257,8 +271,8 @@ int EncodeManager::Open_encode_context(const Encode_Params& encode_params)
         m_pCodecCtx->rc_min_rate = m_pCodecCtx->bit_rate;
         m_pCodecCtx->rc_max_rate = m_pCodecCtx->bit_rate;
         m_pCodecCtx->bit_rate_tolerance = m_pCodecCtx->bit_rate;
-	    m_pCodecCtx->rc_buffer_size = m_pCodecCtx->bit_rate * 2;
-	    m_pCodecCtx->rc_initial_buffer_occupancy = m_pCodecCtx->rc_buffer_size * 3 / 4;
+        m_pCodecCtx->rc_buffer_size = m_pCodecCtx->bit_rate * 2;
+        m_pCodecCtx->rc_initial_buffer_occupancy = m_pCodecCtx->rc_buffer_size * 3 / 4;
     }
     else if (!strcmp(encode_params.rc_mode.c_str(), "CQP"))
     {
@@ -318,7 +332,7 @@ int EncodeManager::Init_swrContext(AVPixelFormat srcFormat, AVPixelFormat dstFor
     return 0;
 }
 
-int EncodeManager::BGRA2YUV(uint8_t* bgra_img, int width, int height)
+int EncodeManager::ColorConvert(uint8_t* bgra_img, int width, int height)
 {
     uint8_t* indata[AV_NUM_DATA_POINTERS] = { 0 };
     indata[0] = bgra_img;
@@ -370,7 +384,7 @@ int EncodeManager::Open_video_output()
 
     if (m_bIsRtsp)
     {
-        if(!(m_pVideoOfmtCtx->oformat->flags & AVFMT_NOFILE))
+        if (!(m_pVideoOfmtCtx->oformat->flags & AVFMT_NOFILE))
         {
             if (avio_open(&m_pVideoOfmtCtx->pb, m_sRtspUrl.c_str(), AVIO_FLAG_WRITE) < 0)
             {
@@ -424,46 +438,46 @@ AVCodecID EncodeManager::GetCodecId(std::string codecID)
 
 int EncodeManager::GetCodecProfile(std::string codecProfile)
 {
-	if (!strcmp(codecProfile.c_str(), "avc:main"))
-	{
-		return FF_PROFILE_H264_MAIN;
-	}
-	else if (!strcmp(codecProfile.c_str(), "avc:high"))
-	{
-		return FF_PROFILE_H264_HIGH;
-	}
+    if (!strcmp(codecProfile.c_str(), "avc:main"))
+    {
+        return FF_PROFILE_H264_MAIN;
+    }
+    else if (!strcmp(codecProfile.c_str(), "avc:high"))
+    {
+        return FF_PROFILE_H264_HIGH;
+    }
     else if (!strcmp(codecProfile.c_str(), "hevc:main"))
-	{
-		return FF_PROFILE_HEVC_MAIN;
-	}
-	else if (!strcmp(codecProfile.c_str(), "hevc:main10"))
-	{
-		return FF_PROFILE_HEVC_MAIN_10;
-	}
-	else
-	{
-		printf("[thread][%d], Unknown or unsupported codec profile!\n", m_uThreadId);
-		return 0;
-	}
+    {
+        return FF_PROFILE_HEVC_MAIN;
+    }
+    else if (!strcmp(codecProfile.c_str(), "hevc:main10"))
+    {
+        return FF_PROFILE_HEVC_MAIN_10;
+    }
+    else
+    {
+        printf("[thread][%d], Unknown or unsupported codec profile!\n", m_uThreadId);
+        return 0;
+    }
 }
 
 AVPixelFormat EncodeManager::GetCodecColorFormat(std::string colorFormat)
 {
-	if (!strcmp(colorFormat.c_str(), "nv12"))
-	{
-		return AV_PIX_FMT_NV12;
-	}
-	else if (!strcmp(colorFormat.c_str(), "yuv420p"))
-	{
-		return AV_PIX_FMT_YUV420P;
-	}
-	else if (!strcmp(colorFormat.c_str(), "rgb32"))
-	{
-		return AV_PIX_FMT_BGRA;
-	}
-	else
-	{
-		printf("[thread][%d], Unknown or unsupported color format!\n", m_uThreadId);
-		return AV_PIX_FMT_NONE;
-	}
+    if (!strcmp(colorFormat.c_str(), "nv12"))
+    {
+        return AV_PIX_FMT_NV12;
+    }
+    else if (!strcmp(colorFormat.c_str(), "yuv420p"))
+    {
+        return AV_PIX_FMT_YUV420P;
+    }
+    else if (!strcmp(colorFormat.c_str(), "rgb32"))
+    {
+        return AV_PIX_FMT_BGRA;
+    }
+    else
+    {
+        printf("[thread][%d], Unknown or unsupported color format!\n", m_uThreadId);
+        return AV_PIX_FMT_NONE;
+    }
 }

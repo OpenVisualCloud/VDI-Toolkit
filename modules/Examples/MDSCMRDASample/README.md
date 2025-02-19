@@ -2,7 +2,7 @@
 This sample contains the MDSCMRDASampleApp.exe application, which demonstrates how to utilize the MultiDisplayScreenCapture library to capture the screen of a Windows virtual machine (VM) and leverage the MediaResourceDirectAccess feature to access the host machine's hardware resources for hardware-accelerated video encoding. Finally, it uses FFmpeg to stream the encoded video from the virtual machine.
 
 The dependencies of MDSCMRDASample include ``MultiDisplayScreenCapture.dll``, ``libWinGuest.dll`` and ``ffmpeg-6.1.1-full_build-shared`` which can be found in the compiled multidispscreencap and MediaResourceDirectAccess modules.
-To enable rtsp streaming, ``mediamtx_v1.6.0_windows_amd64`` is downloaded to start the rtsp server. And CMakeList.txt and WinBuild.bat scripts can be used to compile the binary.
+To enable rtsp streaming, ``mediamtx_v1.6.0_windows_amd64`` is downloaded to start the rtsp server. And CMakeLists.txt and WinBuild.bat scripts can be used to compile the binary.
 
 ## Usage:
 ### 1. IVSHMEM device and Host service
@@ -12,15 +12,15 @@ Please refer to the [MediaResourceDirectAccess README.md](..\..\MediaResourceDir
 Besides the params of MRDASampleApp.exe in the [MediaResourceDirectAccess README.md](..\..\MediaResourceDirectAccess\README.md),
 MDSCMRDASampleApp.exe added 3 params for inputType and outputType selection:
 
-[--inputType input_type]	- specifies the input type. option: capture, file.
+`--inputType input_type` - specifies the input type. Options: capture, file.
 
-[--outputType output_type]	- specifies the ouput type. option: stream, file.
+`--outputType output_type` - specifies the output type. Options: stream, file.
 
-[-rtsp rtsp_url]			- specifies output rtsp url.
+`-rtsp rtsp_url` - specifies the output RTSP URL.
 
 You can choose screencap or file input, and stream or file output.
 
-If stream output is selected, rtsp server needs to be started in the Windows VM first:
+If stream output is selected, the RTSP server needs to be started in the Windows VM first:
 ```bash
 cd scripts\build\Release\mediamtx_v1.6.0_windows_amd64
 .\mediamtx.exe
@@ -29,21 +29,25 @@ And the IP port "8554" of the Windows virtual machine needs to be forwarded to t
 ```bash
 sudo iptables -t nat -I PREROUTING -p tcp --dport 38554 -j DNAT --to ${IP}:8554
 ```
+This sample also has ffmpeg-software and QES encode mode. To use QES encode, IVSHMEM needs to be removed and VGPU needs to be added.
 
-This sample also has ffmpeg-software and QES encode mode, to use QES encode, IVSHMEM needs to be removed and VGPU needs to be added.
-
-To use multiple display, Win2k19 with multi-VDD or WIN10 with multi-IDD is needed to setup, and multiple IVSHMEM devices need to be installed for MRDA encode type.
+To use multiple displays, Win2k19 with multi-VDD or WIN10 with multi-IDD is needed to set up, and multiple IVSHMEM devices need to be installed for MRDA encode type.
 ```bash
-#Display 1:
-"MRDA-inDevPath": "/dev/shm/shm1IN0", "MRDA-inDevSlotNumber": 11,
-"MRDA-inDevPath": "/dev/shm/shm1OUT0","MRDA-inDevPath": 12,
-#Display 2:
-"MRDA-inDevPath": "/dev/shm/shm1IN1", "MRDA-inDevSlotNumber": 13,
-"MRDA-inDevPath": "/dev/shm/shm1OUT1","MRDA-inDevPath": 14,
+## Set multiple shmem names with same basic name and add 0,1,2... to the end of the name in xml
+## Set serialized slot number for each shmem name in xml
+# Display 1:
+<shmem name='shm1IN0'>, slot='0x11',
+<shmem name='shm1OUT0'>, slot='0x12',
+# Display 2:
+<shmem name='shm1IN1'>, slot='0x13',
+<shmem name='shm1OUT1'>, slot='0x14',
+
+## Set the basic shmem name and the slot number of the first display in the config file
+"MRDA-inDevPath": "/dev/shm/shm1IN", "MRDA-inDevSlotNumber": 11,
+"MRDA-outDevPath": "/dev/shm/shm1OUT","MRDA-outDevSlotNumber": 12,
 ```
 
 Edit ``MDSCMRDASample.conf`` for different usage.
-### 1. Config Params Explanation
 ```bash
 # 1. MRDA params:
 ## MRDA host session address $host_ip:host_port
@@ -54,21 +58,21 @@ Edit ``MDSCMRDASample.conf`` for different usage.
 "MRDA-bufferNum": 100,
 ## MRDA buffer size
 "MRDA-bufferSize": 10000000,
-## MRDA input memory dev path
-"MRDA-inDevPath": "/dev/shm/shm1",
-## MRDA output memory dev path
-"MRDA-outDevPath": "/dev/shm/shm2",
-## input memory dev slot number
+## MRDA input memory dev path, multiple displays set same basic DevPath name
+"MRDA-inDevPath": "/dev/shm/shm1IN",
+## MRDA output memory dev path, multiple displays set same basic DevPath name
+"MRDA-outDevPath": "/dev/shm/shm1OUT",
+## input memory dev slot number, multiple displays set the slot number of the first display
 "MRDA-inDevSlotNumber": 11,
-## output memory dev slot number
+## output memory dev slot number, multiple displays set the slot number of the first display
 "MRDA-outDevSlotNumber": 12,
 
 # 2. IO params:
-## input type, capture or file, currently only support capture
+## input type, capture or file
 "inputType": "capture",
 ## output type, stream or file
 "outputType": "stream",
-## input filename, currently no use
+## input filename, multiple inputs split with ",", such as "input1.rgba,input2.rgba"
 "inputFile": "input.rgba",
 ## output filename
 "outputFile": "output.hevc",
@@ -97,7 +101,7 @@ Edit ``MDSCMRDASample.conf`` for different usage.
 # 2. encode params:
 ## encode type, "ffmpeg-software", "ffmpeg-MRDA", "vpl-MRDA" or "QES"
 "encode-type": "ffmpeg-software",
-## input color format, capture mode default "rgb32"
+## input color format, capture mode default "rgb32", file mode support "rgb32", "nv12" and "yuv420p", currently QES encode type not support "yuv420p"
 "inputColorFormat": "rgb32",
 ## output pixel format, "nv12" or "yuv420p"
 "outputPixelFormat": "yuv420p",
@@ -129,7 +133,7 @@ cd scripts\build\Release
 .\MDSCMRDASampleApp.exe
 ```
 
-To read from the published rtsp stream, you can use ffplay in your client machine:
+To read from the published RTSP stream, you can use ffplay in your client machine:
 ```bash
 ffplay -x 1920 -y 1080 -rtsp_transport tcp rtsp://${Host_IP}:38554/screencap0
 ```
@@ -145,14 +149,14 @@ ffplay -x 1920 -y 1080 -rtsp_transport tcp rtsp://${Host_IP}:38555/screencap0
 ```
 
 ## Compile:
-Open Developer PowerShell for VS 2022 and run below commands:
+Open Developer PowerShell for VS 2022 and run the following commands:
 ```bash
 cd scripts
 .\WinBuild.bat
 ```
-And the binary can be found in "scripts\build\Release" folder.
+The binary can be found in "scripts\build\Release" folder.
 
 ## License
-MDSCMRDASample module is licensed under MIT license. Note that MIT license is only the license for Intel VDI Tool Kit itself, independent of its third-party dependencies, which are separately licensed.
+MDSCMRDASample module is licensed under the MIT license. Note that the MIT license is only the license for Intel VDI Tool Kit itself, independent of its third-party dependencies, which are separately licensed.
 
-One of the dependecies FFmpeg is an open source project licensed under LGPL and GPL. See https://www.ffmpeg.org/legal.html. You are solely responsible for determining if your use of FFmpeg requires any additional licenses. Intel is not responsible for obtaining any such licenses, nor liable for any licensing fees due, in connection with your use of FFmpeg.
+One of the dependencies, FFmpeg, is an open source project licensed under LGPL and GPL. See [FFmpeg Legal](https://www.ffmpeg.org/legal.html). You are solely responsible for determining if your use of FFmpeg requires any additional licenses. Intel is not responsible for obtaining any such licenses, nor liable for any licensing fees due, in connection with your use of FFmpeg.

@@ -40,6 +40,7 @@ extern "C" {
 #include "libavdevice/avdevice.h"
 #include "libswscale/swscale.h"
 #include "libswresample/swresample.h"
+#include "libavutil/imgutils.h"
 }
 
 enum Encode_Type
@@ -60,13 +61,13 @@ struct Encode_Params
 {
     Encode_Type encode_type = FFmpeg_SW;
     std::string output_filename = "";
-	std::string rtsp_url = "";
-	bool bIsRtsp = false;
+    std::string rtsp_url = "";
+    bool bIsRtsp = false;
     int width = 1920;
     int height = 1080;
     std::string codec_id = "";
     std::string target_usage = "";
-	std::string codec_profile = "";
+    std::string codec_profile = "";
     std::string input_color_format = "";
     std::string output_pixel_format = "";
     std::string rc_mode = "";
@@ -81,27 +82,27 @@ struct Encode_Params
     uint64_t st_timestamp = 0;
     bool operator == (const Encode_Params& encode_params)
     {
-		return ((encode_type == encode_params.encode_type) &&
-            (!strcmp(output_filename.c_str(), encode_params.output_filename.c_str())) &&
-			(!strcmp(rtsp_url.c_str(), encode_params.rtsp_url.c_str())) &&
-			(bIsRtsp == encode_params.bIsRtsp) &&
-            (width == encode_params.width) &&
-            (height = encode_params.height) &&
-            (!strcmp(codec_id.c_str(), encode_params.codec_id.c_str())) &&
-            (!strcmp(target_usage.c_str(), encode_params.target_usage.c_str())) &&
-			(!strcmp(codec_profile.c_str(), encode_params.codec_profile.c_str())) &&
-            (!strcmp(input_color_format.c_str(), encode_params.input_color_format.c_str())) &&
-            (!strcmp(output_pixel_format.c_str(), encode_params.output_pixel_format.c_str())) &&
-			(!strcmp(rc_mode.c_str(), encode_params.rc_mode.c_str())) &&
-            (qp == encode_params.qp) &&
-            (bitrate == encode_params.bitrate) &&
-			(max_b_frames == encode_params.max_b_frames) &&
-            (framerate_num == encode_params.framerate_num) &&
-			(framerate_den == encode_params.framerate_den) &&
-            (gop == encode_params.gop) &&
-			(async_depth == encode_params.async_depth) &&
-            (threadId == encode_params.threadId)) &&
-            (st_timestamp == encode_params.st_timestamp);
+        return ((encode_type == encode_params.encode_type) &&
+               (!strcmp(output_filename.c_str(), encode_params.output_filename.c_str())) &&
+               (!strcmp(rtsp_url.c_str(), encode_params.rtsp_url.c_str())) &&
+               (bIsRtsp == encode_params.bIsRtsp) &&
+               (width == encode_params.width) &&
+               (height = encode_params.height) &&
+               (!strcmp(codec_id.c_str(), encode_params.codec_id.c_str())) &&
+               (!strcmp(target_usage.c_str(), encode_params.target_usage.c_str())) &&
+               (!strcmp(codec_profile.c_str(), encode_params.codec_profile.c_str())) &&
+               (!strcmp(input_color_format.c_str(), encode_params.input_color_format.c_str())) &&
+               (!strcmp(output_pixel_format.c_str(), encode_params.output_pixel_format.c_str())) &&
+               (!strcmp(rc_mode.c_str(), encode_params.rc_mode.c_str())) &&
+               (qp == encode_params.qp) &&
+               (bitrate == encode_params.bitrate) &&
+               (max_b_frames == encode_params.max_b_frames) &&
+               (framerate_num == encode_params.framerate_num) &&
+               (framerate_den == encode_params.framerate_den) &&
+               (gop == encode_params.gop) &&
+               (async_depth == encode_params.async_depth) &&
+               (threadId == encode_params.threadId)) &&
+               (st_timestamp == encode_params.st_timestamp);
     }
 };
 
@@ -111,7 +112,7 @@ public:
     EncodeManager();
     virtual ~EncodeManager();
     virtual int Init(const Encode_Params& encode_params);
-    virtual int Encode(uint8_t *data, uint64_t timestamp);
+    virtual int Encode(uint8_t* data, uint64_t timestamp);
     virtual int End_video_output();
 
 protected:
@@ -120,9 +121,9 @@ protected:
     int  Open_encode_context(const Encode_Params& encode_params);
     int  Open_video_output();
     int  Init_swrContext(AVPixelFormat srcFormat, AVPixelFormat dstFormat);
-    int  BGRA2YUV(uint8_t* bgra_img, int width, int height);
+    int  ColorConvert(uint8_t* bgra_img, int width, int height);
     AVCodecID GetCodecId(std::string codecID);
-	int GetCodecProfile(std::string codecProfile);
+    int GetCodecProfile(std::string codecProfile);
     AVPixelFormat GetCodecColorFormat(std::string colorFormat);
 
 protected:
@@ -137,7 +138,8 @@ protected:
     uint64_t m_ulPts;
     bool m_bIsRtsp;
     uint32_t m_uThreadId;
-    uint64_t m_uFrameNum;
+    uint32_t m_uFrameNum;
+    bool m_bNeedSws;
 };
 
 #endif

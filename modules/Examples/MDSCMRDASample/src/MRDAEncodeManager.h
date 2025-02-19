@@ -57,16 +57,17 @@ class MRDAEncodeManager : public EncodeManager
 public:
     MRDAEncodeManager();
     virtual ~MRDAEncodeManager();
-    virtual MRDAStatus Init(const MRDAEncode_Params &MRDAEncodeParams);
-    virtual MRDAStatus Encode(uint8_t *data, uint64_t timestamp) override;
+    virtual MRDAStatus Init(const MRDAEncode_Params& MRDAEncodeParams);
+    virtual MRDAStatus Encode();
     virtual MRDAStatus End_video_output() override;
+    virtual FrameBufferItem* GetBufferForInput();
 
     uint32_t GetSendFrameCount();
     uint32_t GetReceiveFrameCount();
 
 private:
-    MRDAStatus InitMRDA(const MRDAEncode_Params &MRDAEncodeParams);
-	MRDAStatus DestroyMRDA();
+    MRDAStatus InitMRDA(const MRDAEncode_Params& MRDAEncodeParams);
+    MRDAStatus DestroyMRDA();
     void ReceiveFrameThread();
     static DWORD WINAPI ReceiveFrameThreadProc(LPVOID param) {
         MRDAEncodeManager* pThis = reinterpret_cast<MRDAEncodeManager*>(param);
@@ -74,21 +75,22 @@ private:
         return 0;
     }
     MRDAStatus FlushFrame();
-    int CreateMediaParams(const MRDAEncode_Params &MRDAEncodeParams);
-    StreamCodecID StringToCodecID(const char *codec_id);
-    TargetUsage StringToTargetUsage(const char *target_usage);
-    uint32_t StringToRCMode(const char *rc_mode);
-    ColorFormat StringToColorFormat(const char *color_format);
-    CodecProfile StringToCodecProfile(const char *codec_profile);
+    int CreateMediaParams(const MRDAEncode_Params& MRDAEncodeParams);
+    StreamCodecID StringToCodecID(const char* codec_id);
+    TargetUsage StringToTargetUsage(const char* target_usage);
+    uint32_t StringToRCMode(const char* rc_mode);
+    ColorFormat StringToColorFormat(const char* color_format);
+    CodecProfile StringToCodecProfile(const char* codec_profile);
 
 private: //MRDA Related
     MRDAHandle m_pMRDA_handle;
     std::shared_ptr<MediaParams> m_pMediaParams;
+    std::shared_ptr<FrameBufferItem> m_pInputBuffer;
     HANDLE m_pTerminateThreadEvent;
     HANDLE m_pThreadHandle;
-	DWORD m_dwThreadId;
+    DWORD m_dwThreadId;
     uint32_t m_nSendFrameCount;
-	uint32_t m_nReceiveFrameCount;
+    uint32_t m_nReceiveFrameCount;
     std::mutex m_mutex;
 };
 
