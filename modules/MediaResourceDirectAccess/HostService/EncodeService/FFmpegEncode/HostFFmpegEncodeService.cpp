@@ -406,7 +406,7 @@ AVFrame* HostFFmpegEncodeService::GetSurfaceForEncode(std::shared_ptr<FrameBuffe
 
     EncodeParams encodeParams = m_mediaParams->encodeParams;
     //sw_frame->format = AV_PIX_FMT_NV12; // uniformed color format
-    sw_frame->format = GetColorFormat(encodeParams.colorFormat);
+    sw_frame->format = GetColorFormat(encodeParams.color_format);
     sw_frame->width = frame->Width();
     sw_frame->height = frame->Height();
     sw_frame->pts = frame->Pts();
