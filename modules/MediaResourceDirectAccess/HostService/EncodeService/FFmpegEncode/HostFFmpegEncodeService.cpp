@@ -175,12 +175,38 @@ MRDAStatus HostFFmpegEncodeService::SetEncParams()
     {
     case TargetUsage::Balanced:
         av_opt_set(m_avctx->priv_data, "preset", "medium", 0);
+        // avc: 0 - best quality, 2 - best speed
+        // hevc: 0 - best quality, 4 - best speed
+        if (m_avctx->codec_id == AV_CODEC_ID_H264)
+        {
+            m_avctx->compression_level = 1;
+        }
+        else if (m_avctx->codec_id == AV_CODEC_ID_HEVC)
+        {
+            m_avctx->compression_level = 2;
+        }
         break;
     case TargetUsage::BestQuality:
         av_opt_set(m_avctx->priv_data, "preset", "veryslow", 0);
+        if (m_avctx->codec_id == AV_CODEC_ID_H264)
+        {
+            m_avctx->compression_level = 0;
+        }
+        else if (m_avctx->codec_id == AV_CODEC_ID_HEVC)
+        {
+            m_avctx->compression_level = 0;
+        }
         break;
     case TargetUsage::BestSpeed:
         av_opt_set(m_avctx->priv_data, "preset", "veryfast", 0);
+        if (m_avctx->codec_id == AV_CODEC_ID_H264)
+        {
+            m_avctx->compression_level = 2;
+        }
+        else if (m_avctx->codec_id == AV_CODEC_ID_HEVC)
+        {
+            m_avctx->compression_level = 4;
+        }
         break;
     default:
         MRDA_LOG(LOG_ERROR, "Unknown target usage!");
