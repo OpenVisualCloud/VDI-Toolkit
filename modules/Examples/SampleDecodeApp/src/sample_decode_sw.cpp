@@ -59,6 +59,7 @@ typedef struct INPUTCONFIG
     uint32_t frame_height;              //!< height of frame
     AVPixelFormat  color_format;        //!< pixel color format
     TASKTYPE decode_type;               //!< decode type, 0 is ffmpeg decode, 1 is oneVPL decode
+    bool dump_file;                     //!< dump file flag
 } InputConfig;
 
 typedef struct DECODERCONTEXT
@@ -86,6 +87,7 @@ void PrintHelp()
     printf("%s", "    [--height frame_height]                  - specifies the frame height. \n");
     printf("%s", "    [--colorFormat color_format]             - specifies the color format. option: yuv420p, nv12, rgb32 \n");
     printf("%s", "    [--decodeType decode_type]               - specifies the decode type. option: ffmpeg \n");
+    printf("%s", "    [--dumpFile 1/0]                         - dump file(1) or not(0). default: 0: no dump file \n");
     printf("%s", "Examples: ./MRDASampleDecodeAppSW.exe -i input.h265 -o output.raw --frameNum 3000 --codecId h265 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --decodeType ffmpeg \n");
 }
 
@@ -142,6 +144,15 @@ TASKTYPE StringToDecodeType(const char *decode_type_str)
     return decode_type;
 }
 
+bool stringToBool(const std::string& str) {
+    if (str == "1") return true;
+    else if (str == "0") return false;
+    else {
+        MRDA_LOG(LOG_ERROR, "Invalid boolean string: %s", str.c_str());
+        return false;
+    }
+}
+
 bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
     // Check if the argument count is reasonable compared to InputConfig requirements
     if (argc < 2) {
@@ -170,6 +181,8 @@ bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
             inputConfig->color_format = StringToColorFormat(argv[++i]);
         } else if (strcmp(argv[i], "--decodeType") == 0 && i + 1 < argc) {
             inputConfig->decode_type = StringToDecodeType(argv[++i]);
+        } else if (strcmp(argv[i], "--dumpFile") == 0 && i + 1 < argc) {
+            inputConfig->dump_file = stringToBool(argv[++i]);
         } else if (strcmp(argv[i], "--help") == 0 && i + 1 < argc) {
             PrintHelp();
             return false;
@@ -381,7 +394,7 @@ MRDAStatus DecodeOneFrame(DecodeContext *decodeContext, InputConfig *inputConfig
             }
         }
 
-        if ((ret = fwrite(buffer, 1, size, decodeContext->output_file)) < 0) {
+        if (inputConfig->dump_file && ((ret = fwrite(buffer, 1, size, decodeContext->output_file)) < 0)) {
             MRDA_LOG(LOG_ERROR, "Failed to dump raw data.");
             av_free(buffer);
             return MRDA_STATUS_OPERATION_FAIL;

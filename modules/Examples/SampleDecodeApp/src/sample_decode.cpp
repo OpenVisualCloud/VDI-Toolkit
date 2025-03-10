@@ -44,6 +44,8 @@ extern "C" {
 
 #define MULTITHREADDECODING 1
 
+bool g_dump_file = false;
+
 #include <thread>
 #include <chrono>
 
@@ -145,7 +147,7 @@ MRDAStatus DecodeFrame(MRDAHandle mrda_handle, FILE *sink, std::shared_ptr<Frame
         // success
         if (outBuffer->pts >= 0)
         {
-            WriteDecodedFrame(sink, outBuffer.get());
+            if (g_dump_file) WriteDecodedFrame(sink, outBuffer.get());
             *cur_pts = outBuffer->pts;
             // MRDA_LOG(LOG_INFO, "Receive frame at pts: %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
         }
@@ -200,7 +202,7 @@ void ReceiveFrameThread(MRDAHandle mrda_handle, FILE *sink, uint64_t frameNum)
 #ifdef _ENABLE_TRACE_
             MRDA_LOG(LOG_INFO, "MRDA trace log: complete receive frame in sample decode, pts: %llu", outBuffer->pts);
 #endif
-            WriteDecodedFrame(sink, outBuffer.get());
+            if (g_dump_file) WriteDecodedFrame(sink, outBuffer.get());
             cur_pts = outBuffer->pts;
             // MRDA_LOG(LOG_INFO, "Receive frame at pts: %llu, buffer id %d", outBuffer->pts, outBuffer->bufferItem->buf_id);
         }
@@ -235,7 +237,7 @@ MRDAStatus FlushFrame(MRDAHandle mrda_handle, FILE *sink, uint64_t cur_pts, uint
         // success
         if (outBuffer->pts >= 0)
         {
-            WriteDecodedFrame(sink, outBuffer.get());
+            if (g_dump_file) WriteDecodedFrame(sink, outBuffer.get());
             // MRDA_LOG(LOG_INFO, "In flush process: Receive frame at pts: %llu", outBuffer->pts);
         }
         cur_pts = outBuffer->pts;
@@ -386,6 +388,7 @@ void PrintHelp()
     printf("%s", "    [--height frame_height]                  - specifies the frame height. \n");
     printf("%s", "    [--colorFormat color_format]             - specifies the color format. option: yuv420p, nv12, rgb32 \n");
     printf("%s", "    [--decodeType decode_type]               - specifies the decode type. option: ffmpeg, oneVPL \n");
+    printf("%s", "    [--dumpFile 1/0]                         - dump file(1) or not(0). default: 0: no dump file \n");
     printf("%s", "Examples: ./MRDASampleDecodeApp.exe --hostSessionAddr 127.0.0.1:50051 -i input.h265 -o output.raw --memDevSize 1000000000 --bufferNum 100 --bufferSize 10000000 --inDevPath /dev/shm/shm1IN --outDevPath /dev/shm/shm1OUT --inDevSlotNumber 11 --outDevSlotNumber 12 --frameNum 3000 --codecId h265 --fps 30 --width 1920 --height 1080 --colorFormat rgb32 --decodeType ffmpeg \n");
 }
 
@@ -401,6 +404,15 @@ TASKTYPE StringToDecodeType(const char *decode_type_str)
         decode_type = TASKTYPE::taskOneVPLDecode;
     }
     return decode_type;
+}
+
+bool stringToBool(const std::string& str) {
+    if (str == "1") return true;
+    else if (str == "0") return false;
+    else {
+        MRDA_LOG(LOG_ERROR, "Invalid boolean string: %s", str.c_str());
+        return false;
+    }
 }
 
 bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
@@ -447,6 +459,8 @@ bool ParseConfig(int argc, char **argv, InputConfig *inputConfig) {
             inputConfig->color_format = StringToColorFormat(argv[++i]);
         } else if (strcmp(argv[i], "--decodeType") == 0 && i + 1 < argc) {
             inputConfig->decode_type = StringToDecodeType(argv[++i]);
+        } else if (strcmp(argv[i], "--dumpFile") == 0 && i + 1 < argc) {
+            g_dump_file = stringToBool(argv[++i]);
         } else if (strcmp(argv[i], "--help") == 0 && i + 1 < argc) {
             PrintHelp();
             return false;
