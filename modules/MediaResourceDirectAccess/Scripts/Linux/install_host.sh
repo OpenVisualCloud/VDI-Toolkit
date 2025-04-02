@@ -10,7 +10,14 @@ build_gitv2()
     elif [ "${OS}" == \""CentOS Stream"\" ];then
         sudo dnf -y install curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-ExtUtils-MakeMaker
     elif [ "${OS}" == \""Ubuntu"\" ];then
-        sudo apt install libcurl4-openssl-dev libexpat1-dev gettext libssl-dev zlib1g-dev libperl-dev make
+        # using libexpat1-dev:2.7.1-1
+        wget http://ftp.de.debian.org/debian/pool/main/e/expat/libexpat1_2.7.1-1_amd64.deb
+        wget http://ftp.de.debian.org/debian/pool/main/e/expat/libexpat1-dev_2.7.1-1_amd64.deb
+        sudo dpkg -i libexpat1_2.7.1-1_amd64.deb
+        sudo dpkg -i libexpat1-dev_2.7.1-1_amd64.deb
+        rm -f libexpat1_2.7.1-1_amd64.deb
+        rm -f libexpat1-dev_2.7.1-1_amd64.deb
+        sudo apt install libcurl4-openssl-dev gettext libssl-dev zlib1g-dev libperl-dev make
     fi
     if [ ! -d "./git-2.21.0" ];then
         wget https://github.com/git/git/archive/v2.21.0.tar.gz -O git-2.21.0.tar.gz
