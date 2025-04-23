@@ -1,20 +1,20 @@
-﻿**VDI Test User Manual**
+ ﻿**VDI-Toolkit User Manual**
 
 **Table of Contents**
 
 - [Get Ready](#get-ready)
-- [VDI test environment setup](#vdi-test-environment-setup)
+- [VDI-Toolkit test environment setup](#vdi-test-environment-setup)
   - [Basic configuration of the server host](#basic-configuration-of-the-server-host)
   - [Create and install a Windows virtual machine](#create-and-install-a-windows-virtual-machine)
   - [Configure virtual machine remote connections](#configure-virtual-machine-remote-connections)
   - [Configure the test environment on the virtual machine](#configure-the-test-environment-on-the-virtual-machine)
-  - [The virtual machine setting automatically triggers the test at startup](#the-virtual-machine-setting-automatically-triggers-the-test-at-startup)
-  - [VDI\_TEST description of the test content](#vdi_test-description-of-the-test-content)
+  - [The virtual machine setting automatically triggers the WinAPPDriver](#the-virtual-machine-setting-automatically-triggers-the-winappdriver)
+  - [VDI test description of the test content](#vdi-test-description-of-the-test-content)
   - [Additional considerations](#additional-considerations)
-- [Remote control environment setup and testing](#remote-control-environment-setup-and-testing)
-  - [Windows remotely controls machine configuration](#windows-remotely-controls-machine-configuration)
+  - [Remote control environment setup and testing](#remote-control-environment-setup-and-testing)
   - [Linux remotely controls machine configuration](#linux-remotely-controls-machine-configuration)
-  - [Run the remote control program](#run-the-remote-control-program)
+  - [Launch the tests on VMs](#launch-the-tests-on-vms)
+
 
 # Get Ready
 1. Install on the server host: Centos 7.x (take Centos 7.9 as an example).
@@ -100,9 +100,9 @@ $ yum --enablerepo=nux-misc install --nogpgcheck tunctl -y
 7. Set CPU P-State to Performance
 
 ```bash
-$ echo "performance" | tee /sys/devices/system/cpu/cpu\*/cpufreq/scaling\_governor
+$ echo "performance" | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 
-$ cat /sys/devices/system/cpu/cpu\*/cpufreq/scaling\_governor
+$ cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 ```
 
 8. Create and set the swap partition size (optional)
@@ -135,7 +135,7 @@ $ qemu-img create -f qcow2 win2k16.qcow2 25G
 2. Make an image, mount the system installation ISO image to CDROM, and install the Windows operating system
 
 ```
-$ qemu-kvm -enable-kvm -smp 8 -m 8192 -boot d -cdrom /opt/Windows\_server\_2016.iso -hda ~/win2k16.qcow2 -vnc :5
+$ qemu-kvm -enable-kvm -smp 8 -m 8192 -boot d -cdrom /opt/Windows_server_2016.iso -hda ~/win2k16.qcow2 -vnc :5
 ```
 
 3. With VNC Viewer, the port of VNC starts from 5900, and -vnc:5 is set in the command, so connect port 5905 and then install the system normally
@@ -352,15 +352,10 @@ pip install pywin32
 
 ![](./pic/020.png)
 
-6. Installation[WindowsApplicationDriver_1.2.1**.](https://github.com/microsoft/WinAppDriver/releases/download/v1.2.1/WindowsApplicationDriver_1.2.1.msi)
+6. Download and install [WindowsApplicationDriver_1.2.1**.](https://github.com/microsoft/WinAppDriver/releases/download/v1.2.1/WindowsApplicationDriver_1.2.1.msi)
 
-7. Download the VDI \_test test package
 
-![](./pic/021.png)
-
-8. The test\*.doc used in the test, test\*XLS and test.h265 files are stored in the resource directory, please copy to the root directory of the C drive or modify the XML configuration path (Note: the XML configuration file defaults to the configuration path is C:\).
-
-## The virtual machine setting automatically triggers the test at startup
+## The virtual machine setting automatically triggers the WinAPPDriver
 
 1.  Under the specified path of Windows Server 2016, create a bat file that boots automatically.
 
@@ -372,23 +367,25 @@ cd C:\Users\administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\
 
 2. Create a new bat file, name it autorun.bat, edit the file, and add the following code:
 
-```
+```bash
 cd C:\Program Files (x86)\Windows Application Driver
-start /min WinAppDriver.exe
-timeout 5
-cd C:\vdi\vdi\_test
-python winapptest.py
+timeout /T 60
+for /f "tokens=2 delims=:(" %%a in ('ipconfig /all^|findstr /c:"IPv4"') do (
+set "IP=%%a" goto StartWinAppDriver
+)
+ 
+:StartWinAppDriver
+echo IP: %IP%
+winappdriver.exe %IP% 4723
+
 ```
 
-3. Or directly copy the script file from vdi\_test directory  winappdriver\_local.bat to the Startup directory
 
-4. After you turn on the automatic test program, the system will start the test script in a loop
-
-## VDI_TEST description of the test content
+## VDI test description of the test content
 
 1. Edge web page test
 
-You can modify the web address or delay setting in the edge .xml file as needed
+You can modify the web address or delay setting in the edge.xml file as needed
 
 Note: The first time the system is opened after installing Edge may cause the test to fail due to importing configuration information, it is recommended to initialize the configuration Edge when creating a virtual machine.
 
@@ -434,22 +431,10 @@ Taking VLC as an example, if you want to delete VLC video playback test, simply 
 
 The remote control program "Test Runner" can control the test content on the virtual machine side by IP address on the basis of starting multiple virtual machines in the "idle" state. It currently has the following features:
 
-1. Use the IP address recorded in the vm\_ip.txt to control the test content in multiple virtual machines with corresponding IP addresses.
+1. Use the IP address recorded in the vm_ip.txt to control the test content in multiple virtual machines with corresponding IP addresses.
 
 2. Make changes to test content that is already running inside the virtual machine.
 
-## Windows remotely controls machine configuration
-
-1. Remotely control the machine, install the following systems and software, and be on the same network segment as the virtual machine.
-   1. Windows OS environment
-   2. Python2.7.18
-   3. WinAppDriver
-   4. Set up developer mode
-   5. Download the VDi\_test\_remote test package
-2.  The server starts multiple virtual machines in the "idle" state for testing.
-3.  Obtain the IP addresses of all virtual machines to be tested. You can add the corresponding IP address to the "v m\_ip.txt" of the corresponding test directory.
-
-![](./pic/026.png)
 
 
 ## Linux remotely controls machine configuration
@@ -462,38 +447,29 @@ $ pip install Appium-Python-Client==0.3
 $ pip install selenium==3.141.0
 ```
 
-3. Obtain the IP address of the virtual machine
 
+## Launch the tests on VMs
+
+Find the script under repo folder : /VDI-Toolkit/tree/main/utils
+
+1. Create VMs and start
+
+```
+$ createvm.sh original_qcow2_name dest_dir start_vm vm_count vm_core vm_mem nat|bridge
+```
+
+**Example: (Start 100 virtual machines, each VM is assigned 2core, 4G memory).**
+
+```
+$ ./createvm.sh /nvme/win2k16_resize.qcow2 /nvme 0 100 2 4096 nat
+```
+
+2. Obtain the IP address of the virtual machine
 ```
 $ findip.sh nat
 ```
-
-4. Perform the test
+3. Perform the test
 
 ```
 $ python vmtestrun.py
 ```
-
-## Run the remote control program
-
-**Scenario 1 - Control the virtual machine to run the test**
-
-1. Open the vdi\_test\s1\_office directory, and you will need to obtain and write the IP address of the virtual machine in the office office scenario  to vm\_ip.txt.
-1. Execute the vmtestrun .py script, which will run all XML test scripts under the s1\_ office folder on the VM.
-1. Open the vdi\_test\s2\_media directory and obtain and write the IP address of the virtual machine that needs to be used for the video playback scene to vm\_ip.txt.
-1. Execute the vmtestrun .py script.
-
-**Note:**
-
-1. The virtual machine environment is started in an "idle" state and does not need to put in any XML test scripts.
-1. The virtual machine that is started needs to be set to start startapp .bat script to run WinAppdriver to listen to XML files.
-1. If you need other test content, you can create a test directory, write the corresponding test script, and then load the vmtestrun script into the virtual machine of the corresponding IP address for execution
-
-**Scenario 2 - Switch virtual machine test content**
-
-1. Turn off the test script vmtestrun.py before switching test content.
-1. Open the vdi\_test\reboot directory and copy the IP address of the virtual machine that needs to switch the test content to the vm\_ip.txt.
-1. Execute vmtestrun .py let the virtual machine restart once.
-1. Wait for the VMs to restart.
-1. Copy the IP address of the virtual machine to the directory where you want to test.
-1. Execute the vmtestrun .py script.
