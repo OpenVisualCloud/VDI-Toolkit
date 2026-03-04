@@ -7,7 +7,7 @@ There is a ``MediaSample.exe`` pre-built in the ``x64/release`` folder. And this
 
 ## Usage:
 ```
-MediaSample.exe -cfg [config_file] (-n [num_frames]) (-fixFPS [target_FPS]) (-encodeonly [0 or 1])
+MediaSample.exe   -cfg [config_file] (-n [num_frames]) (-fixFPS [target_FPS]) (-encodeonly [0 or 1])
 ```
 - -n: [num_frames] to be the amount of frames to be captured.
 
